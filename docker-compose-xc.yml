@@ -1,0 +1,64 @@
+version: '3'
+services:
+  validator-alice:
+    image: parity/polkadot:v0.9.24
+    ports:
+      - '30333:30333'
+      - '6644:9944'
+      - '6633:9933'
+    volumes:
+      - ./:/data
+    command:
+      - --chain=/data/chainspecs/rococo-local-raw.json
+      - --base-path=/data/.tmp_alice_data
+      - --port=30333
+      - --ws-port=9944
+      - --rpc-port=9933
+      - --rpc-cors=all
+      - --unsafe-rpc-external
+      - --unsafe-ws-external
+      - --validator
+      - --alice
+      - --no-prometheus
+      - --no-telemetry
+    networks:
+      paradao_net:
+        ipv4_address: 172.28.1.1
+        aliases:
+          - alice
+
+  validator-bob:
+    image: parity/polkadot:v0.9.24
+    ports:
+      - '30334:30333'
+      - '6677:9944'
+      - '6655:9933'
+    volumes:
+      - ./:/data
+    command:
+      - --chain=/data/chainspecs/rococo-local-raw.json
+      - --base-path=/data/.tmp_bob_data
+      - --port=30333
+      - --ws-port=9944
+      - --rpc-port=9933
+      - --rpc-cors=all
+      - --unsafe-rpc-external
+      - --unsafe-ws-external
+      - --validator
+      - --bob
+      - --no-prometheus
+      - --no-telemetry
+    networks:
+      paradao_net:
+        ipv4_address: 172.28.1.2
+        aliases:
+          - bob
+
+networks:
+  paradao_net:
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.28.0.0/16
+
+
