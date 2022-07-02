@@ -3,11 +3,7 @@ use super::{
 	WeightToFee, XcmpQueue,
 };
 use core::marker::PhantomData;
-use frame_support::{
-	log, match_types, parameter_types,
-	traits::{Everything, Nothing},
-	weights::Weight,
-};
+use frame_support::{log, match_types, parameter_types, traits::Everything, weights::Weight};
 use pallet_xcm::XcmPassthrough;
 use polkadot_parachain::primitives::Sibling;
 use polkadot_runtime_common::impls::ToAuthor;
