@@ -4,9 +4,9 @@ para dão - to give in Portuguese
 ParaDAO provides tools for communities with the same passion / shared interests to come together to organise amongst themselves to acheive a common goal.
 The decentralised application that allows communities to create a DAO easily with out of the box options for managing:
 
-- Governance process
-- Roles
-- Opiinion polling
+-   Governance process
+-   Roles
+-   Opiinion polling
 
 ## Special features
 
@@ -53,10 +53,10 @@ early voters will be rewarded more than the late voters, when the outcome is mor
 
 ## Components
 
-- A parachain node with Pallets specifically to allow for DAO creation
-- A relay chain node to simulate staking of relay chain native tokens
-- Frontend allow users to create DAOs easily, allow DAO members to do proposals, votes, etc
-  - integration with Zeigeist sdk
+-   A parachain node with Pallets specifically to allow for DAO creation
+-   A relay chain node to simulate staking of relay chain native tokens
+-   Frontend allow users to create DAOs easily, allow DAO members to do proposals, votes, etc
+    -   integration with Zeigeist sdk
 
 ---
 
@@ -64,11 +64,11 @@ early voters will be rewarded more than the late voters, when the outcome is mor
 
 Requirements:
 
-- Node
-- Docker
-- Rust
-- jq
-- curl
+-   Node
+-   Docker
+-   Rust
+-   jq
+-   curl
 
 ### 1. Build the collator for the parachain
 

@@ -1,0 +1,54 @@
+Sending transaction xcmPallet.limitedTeleportAssets(dest, beneficiary, assets, feeAssetItem, weightLimit)
+T5eleport some assets from the local chain to some destination chain.
+dest: XcmVersionedMultiLocation
+{
+V1: {
+parents: 0
+interior: {
+X1: {
+Parachain: 1,000
+}
+}
+}
+}
+beneficiary: XcmVersionedMultiLocation
+{
+V1: {
+parents: 0
+interior: {
+X1: {
+AccountId32: {
+network: Any
+id: 0x4ae20874fc0cab3e76cf42f2ed1b3ae977c9903d34e3abe57aeee0f9d17e7d03
+}
+}
+}
+}
+}
+assets: XcmVersionedMultiAssets
+{
+V1: [
+{
+id: {
+Concrete: {
+parents: 0
+interior: Here
+}
+}
+fun: {
+Fungible: 5,000,000,000
+}
+}
+]
+}
+feeAssetItem: u32
+0
+weightLimit: XcmV2WeightLimit
+Unlimited
+
+{
+Incomplete: [
+1,000,000,000
+UntrustedTeleportLocation
+]
+

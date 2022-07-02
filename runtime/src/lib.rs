@@ -456,6 +456,11 @@ impl pallet_template::Config for Runtime {
 	type Event = Event;
 }
 
+impl pallet_sudo::Config for Runtime {
+	type Call = Call;
+	type Event = Event;
+}
+
 // Create the runtime by composing the FRAME pallets that were previously configured.
 construct_runtime!(
 	pub enum Runtime where
@@ -487,6 +492,8 @@ construct_runtime!(
 		PolkadotXcm: pallet_xcm::{Pallet, Call, Event<T>, Origin, Config} = 31,
 		CumulusXcm: cumulus_pallet_xcm::{Pallet, Event<T>, Origin} = 32,
 		DmpQueue: cumulus_pallet_dmp_queue::{Pallet, Call, Storage, Event<T>} = 33,
+		Sudo: pallet_sudo::{Pallet, Call, Storage, Config<T>, Event<T>},
+
 
 		// Template
 		TemplatePallet: pallet_template::{Pallet, Call, Storage, Event<T>}  = 40,
