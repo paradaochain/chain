@@ -222,8 +222,8 @@ const AVERAGE_ON_INITIALIZE_RATIO: Perbill = Perbill::from_percent(5);
 /// `Operational` extrinsics.
 const NORMAL_DISPATCH_RATIO: Perbill = Perbill::from_percent(75);
 
-/// We allow for 0.5 of a second of compute with a 12 second average block time.
-const MAXIMUM_BLOCK_WEIGHT: Weight = WEIGHT_PER_SECOND / 2;
+/// We allow for 4 of a second of compute with a 12 second average block time.
+const MAXIMUM_BLOCK_WEIGHT: Weight = 12 * WEIGHT_PER_SECOND;
 
 /// The version information used to identify this runtime when compiled natively.
 #[cfg(feature = "std")]
@@ -551,9 +551,9 @@ construct_runtime!(
 		PolkadotXcm: pallet_xcm::{Pallet, Call, Event<T>, Origin, Config} = 31,
 		CumulusXcm: cumulus_pallet_xcm::{Pallet, Event<T>, Origin} = 32,
 		DmpQueue: cumulus_pallet_dmp_queue::{Pallet, Call, Storage, Event<T>} = 33,
-		 Sudo: pallet_sudo::{Pallet, Call, Storage, Config<T>, Event<T>}=34,
-		Contracts: pallet_contracts::{Pallet, Call, Storage, Event<T>} = 35,
-		RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Pallet, Storage} = 36,
+		Sudo: pallet_sudo::{Pallet, Call, Storage, Config<T>, Event<T>}=34,
+		RandomnessCollectiveFlip: pallet_randomness_collective_flip::{Pallet, Storage} = 35,
+		Contracts: pallet_contracts::{Pallet, Call, Storage, Event<T>} = 36,
 
 
 		// Template

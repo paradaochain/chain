@@ -1,0 +1,79 @@
+In the case that tx get stuck in the pool it may be because it is thought to be too large for the
+block. However, it does not look like the will reject it all together (even if nothing else is in
+the block, i.e. the tx is simply too much for the blockchain config of what should be in a block).
+
+In our case, we have increased the `MAXIMUM_BLOCK_WEIGHT` after adding the contract pallet to the
+runtime. I think this is due to the contract pallet "occupying" with some weights in the block.
+
+
+
+2022-07-03 11:41:51.698 TRACE tokio-runtime-worker state-db-pin: [Parachain] Unpinned block: 0xada7054bf7624bf1c6003b785d559e418525c37bc658e6f067110a062cfc4915
+2022-07-03 11:41:51.698 TRACE tokio-runtime-worker txpool: [0x84d762e40aa5d13c850d8784b6d2a9432a02322d31248ddf8ad8ada5f311c677] WaitingTransaction { imported_at: Instant { t: 587145813468144 }, transaction: Transaction { hash: 0x84d762e40aa5d13c850d8784b6d2a9432a02322d31248ddf8ad8ada5f311c677, priority: 3271, valid_till: 31, bytes: 149, propagate: true, source: TransactionSource::External, requires: [], provides: [d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d00000000], data: 8400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d01e41e6b02bb24a07596524528e2ab80e7ff9e0bbf229b08b50993de613adabc6ae2932e69bfcdf9e81adcd1571179983125e018f6ba515ec88949c526b25ad482040000000a0300be5ddb1579b72e84524fc29e78609e3caf42e85aa118ebfe0b0ad404b5bdd25f1300706415d045ae01}, missing_tags: {}}
+2022-07-03 11:41:51.698 DEBUG tokio-runtime-worker txpool: [0x84d762e40aa5d13c850d8784b6d2a9432a02322d31248ddf8ad8ada5f311c677] Importing to ready
+2022-07-03 11:41:51.698 TRACE tokio-runtime-worker txpool: [0x84d762e40aa5d13c850d8784b6d2a9432a02322d31248ddf8ad8ada5f311c677] Ready (replaced with None)
+2022-07-03 11:41:51.699 DEBUG tokio-runtime-worker txpool: Pool Status: PoolStatus { ready: 1, ready_bytes: 149, future: 0, future_bytes: 0 }
+2022-07-03 11:41:51.699 DEBUG tokio-runtime-worker jsonrpsee_ws_server::server: send 53 bytes
+2022-07-03 11:41:51.699 TRACE tokio-runtime-worker jsonrpsee_ws_server::server: send: {"jsonrpc":"2.0","result":"8wYhIWgmQ9uCxoen","id":39}
+2022-07-03 11:41:51.699 TRACE tokio-runtime-worker soketto::connection: 0c89ab03: send: (Text (fin 1) (rsv 000) (mask (0 0)) (len 53))
+2022-07-03 11:41:51.699 TRACE tokio-runtime-worker soketto::connection: 0c89ab03: Sender flushing connection
+2022-07-03 11:41:51.699 DEBUG tokio-runtime-worker jsonrpsee_ws_server::server: send 113 bytes
+2022-07-03 11:41:51.699 TRACE tokio-runtime-worker jsonrpsee_ws_server::server: send: {"jsonrpc":"2.0","method":"author_extrinsicUpdate","params":{"subscription":"8wYhIWgmQ9uCxoen","result":"ready"}}
+2022-07-03 11:41:51.699 TRACE tokio-runtime-worker soketto::connection: 0c89ab03: send: (Text (fin 1) (rsv 000) (mask (0 0)) (len 113))
+2022-07-03 11:41:51.699 TRACE tokio-runtime-worker polling::kqueue: [Parachain] add: kqueue_fd=48, fd=77, ev=Event { key: 10, readable: false, writable: true }
+2022-07-03 11:41:51.699 TRACE tokio-runtime-worker soketto::connection: 0c89ab03: Sender flushing connection
+2022-07-03 11:41:51.699 DEBUG tokio-runtime-worker sync: [Parachain] Propagating transaction [0x84d762e40aa5d13c850d8784b6d2a9432a02322d31248ddf8ad8ada5f311c677]
+
+2022-07-03 11:41:54.126 DEBUG tokio-runtime-worker txpool: [Parachain] Sent 1 transactions to revalidation queue
+2022-07-03 11:41:54.126 DEBUG tokio-runtime-worker txpool: [Parachain] Updated revalidation queue at 1. Transactions: {0x84d762e40aa5d13c850d8784b6d2a9432a02322d31248ddf8ad8ada5f311c677: 1}
+2022-07-03 11:41:54.199 TRACE tokio-runtime-worker state-db-pin: [Parachain] Pinned block: 0x18174773c7bb96cd226239cedd845106ba34926ad059cb8646aa21f07b35c9b9
+2022-07-03 11:41:54.199 TRACE tokio-runtime-worker state-db-pin: [Parachain] Pinned non-canon block:
+0x18174773c7bb96cd226239cedd845106ba34926ad059cb8646aa21f07b35c9b9
+
+2022-07-03 11:41:54.201 TRACE tokio-runtime-worker txpool: [Parachain] [0x84d762e40aa5d13c850d8784b6d2a9432a02322d31248ddf8ad8ada5f311c677] Removed as part of the subtree.
+2022-07-03 11:41:54.201 TRACE tokio-runtime-worker txpool: [Parachain] [0x84d762e40aa5d13c850d8784b6d2a9432a02322d31248ddf8ad8ada5f311c677] WaitingTransaction { imported_at: Instant { t: 587148315509953 }, transaction: Transaction { hash: 0x84d762e40aa5d13c850d8784b6d2a9432a02322d31248ddf8ad8ada5f311c677, priority: 3271, valid_till: 31, bytes: 149, propagate: true, source: TransactionSource::External, requires: [], provides: [d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d00000000], data: 8400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d01e41e6b02bb24a07596524528e2ab80e7ff9e0bbf229b08b50993de613adabc6ae2932e69bfcdf9e81adcd1571179983125e018f6ba515ec88949c526b25ad482040000000a0300be5ddb1579b72e84524fc29e78609e3caf42e85aa118ebfe0b0ad404b5bdd25f1300706415d045ae01}, missing_tags: {}}
+2022-07-03 11:41:54.201 DEBUG tokio-runtime-worker txpool: [Parachain] [0x84d762e40aa5d13c850d8784b6d2a9432a02322d31248ddf8ad8ada5f311c677] Importing to ready
+2022-07-03 11:41:54.201 DEBUG tokio-runtime-worker txpool: [Parachain] Resubmitted. Took 0 ms. Status: PoolStatus { ready: 1, ready_bytes: 149, future: 0, future_bytes: 0 }
+2022-07-03 11:41:54.201 DEBUG tokio-runtime-worker txpool: [Parachain] Revalidated 1 transactions. Left in the queue for revalidation: 0.
+
+
+2022-07-03 11:42:00.151 TRACE tokio-runtime-worker state-db-pin: [Parachain] Unpinned block: 0x18174773c7bb96cd226239cedd845106ba34926ad059cb8646aa21f07b35c9b9
+2022-07-03 11:42:00.151 TRACE tokio-runtime-worker txpool: [Parachain] Transaction pool already processed block  #1
+2022-07-03 11:42:00.151 DEBUG tokio-runtime-worker sc_basic_authorship::basic_authorship: [Parachain] Attempting to push transactions from the pool.
+2022-07-03 11:42:00.151 DEBUG tokio-runtime-worker sc_basic_authorship::basic_authorship: [Parachain] Pool status: PoolStatus { ready: 1, ready_bytes: 149, future: 0, future_bytes: 0 }
+2022-07-03 11:42:00.151 TRACE tokio-runtime-worker sc_basic_authorship::basic_authorship: [Parachain] [0x84d762e40aa5d13c850d8784b6d2a9432a02322d31248ddf8ad8ada5f311c677] Pushing to the block.
+
+2022-07-03 11:42:00.152 TRACE tokio-runtime-worker state-db-pin: [Parachain] Unpinned block: 0x18174773c7bb96cd226239cedd845106ba34926ad059cb8646aa21f07b35c9b9
+2022-07-03 11:42:00.152 DEBUG tokio-runtime-worker txpool: [Parachain] [0x84d762e40aa5d13c850d8784b6d2a9432a02322d31248ddf8ad8ada5f311c677] Reported as invalid. Will skip sub-chains while iterating.
+2022-07-03 11:42:00.152 DEBUG tokio-runtime-worker sc_basic_authorship::basic_authorship: [Parachain] Block seems full, but will try 7 more transactions before quitting.
+
+2022-07-03 11:42:12.034 DEBUG tokio-runtime-worker txpool: [Parachain] Updated revalidation queue at 2. Transactions: {0x84d762e40aa5d13c850d8784b6d2a9432a02322d31248ddf8ad8ada5f311c677: 2}
+
+2022-07-03 11:42:12.213 TRACE tokio-runtime-worker state-db-pin: [Parachain] Unpinned block: 0xfdbd91a20029f51d91ee8c788fa91fea37fa00c0ef2347b195562d8c8bb86c1f
+2022-07-03 11:42:12.213 TRACE tokio-runtime-worker txpool: [Parachain] [0x84d762e40aa5d13c850d8784b6d2a9432a02322d31248ddf8ad8ada5f311c677] Removed as part of the subtree.
+2022-07-03 11:42:12.213 TRACE tokio-runtime-worker txpool: [Parachain] [0x84d762e40aa5d13c850d8784b6d2a9432a02322d31248ddf8ad8ada5f311c677] WaitingTransaction { imported_at: Instant { t: 587166327408359 }, transaction: Transaction { hash: 0x84d762e40aa5d13c850d8784b6d2a9432a02322d31248ddf8ad8ada5f311c677, priority: 3271, valid_till: 31, bytes: 149, propagate: true, source: TransactionSource::External, requires: [], provides: [d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d00000000], data: 8400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d01e41e6b02bb24a07596524528e2ab80e7ff9e0bbf229b08b50993de613adabc6ae2932e69bfcdf9e81adcd1571179983125e018f6ba515ec88949c526b25ad482040000000a0300be5ddb1579b72e84524fc29e78609e3caf42e85aa118ebfe0b0ad404b5bdd25f1300706415d045ae01}, missing_tags: {}}
+2022-07-03 11:42:12.213 DEBUG tokio-runtime-worker txpool: [Parachain] [0x84d762e40aa5d13c850d8784b6d2a9432a02322d31248ddf8ad8ada5f311c677] Importing to ready
+2022-07-03 11:42:12.213 DEBUG tokio-runtime-worker txpool: [Parachain] Resubmitted. Took 0 ms. Status: PoolStatus { ready: 1, ready_bytes: 149, future: 0, future_bytes: 0 }
+2022-07-03 11:42:12.213 DEBUG tokio-runtime-worker txpool: [Parachain] Revalidated 1 transactions. Left in the queue for revalidation: 0.
+
+2022-07-03 11:42:24.233 TRACE tokio-runtime-worker txpool: [Parachain] Transaction pool already processed block  #2
+2022-07-03 11:42:24.233 DEBUG tokio-runtime-worker sc_basic_authorship::basic_authorship: [Parachain] Attempting to push transactions from the pool.
+2022-07-03 11:42:24.233 DEBUG tokio-runtime-worker sc_basic_authorship::basic_authorship: [Parachain] Pool status: PoolStatus { ready: 1, ready_bytes: 149, future: 0, future_bytes: 0 }
+2022-07-03 11:42:24.233 TRACE tokio-runtime-worker sc_basic_authorship::basic_authorship: [Parachain] [0x84d762e40aa5d13c850d8784b6d2a9432a02322d31248ddf8ad8ada5f311c677] Pushing to the block.
+2022-07-03 11:42:24.233 TRACE tokio-runtime-worker state-db-pin: [Parachain] Pinned block: 0xfdbd91a20029f51d91ee8c788fa91fea37fa00c0ef2347b195562d8c8bb86c1f
+2022-07-03 11:42:24.233 TRACE tokio-runtime-worker state-db-pin: [Parachain] Pinned non-canon block: 0xfdbd91a20029f51d91ee8c788fa91fea37fa00c0ef2347b195562d8c8bb86c1f
+
+2022-07-03 11:42:24.234 TRACE tokio-runtime-worker state-db-pin: [Parachain] Unpinned block: 0xfdbd91a20029f51d91ee8c788fa91fea37fa00c0ef2347b195562d8c8bb86c1f
+2022-07-03 11:42:24.234 DEBUG tokio-runtime-worker txpool: [Parachain] [0x84d762e40aa5d13c850d8784b6d2a9432a02322d31248ddf8ad8ada5f311c677] Reported as invalid. Will skip sub-chains while iterating.
+2022-07-03 11:42:24.234 DEBUG tokio-runtime-worker sc_basic_authorship::basic_authorship: [Parachain] Block seems full, but will try 7 more transactions before quitting.
+2022-07-03 11:42:24.234 TRACE tokio-runtime-worker state-db-pin: [Parachain] Pinned block: 0xfdbd91a20029f51d91ee8c788fa91fea37fa00c0ef2347b195562d8c8bb86c1f
+2022-07-03 11:42:24.234 TRACE tokio-runtime-worker state-db-pin: [Parachain] Pinned non-canon block: 0xfdbd91a20029f51d91ee8c788fa91fea37fa00c0ef2347b195562d8c8bb86c1f
+
+2022-07-03 11:42:36.206 DEBUG tokio-runtime-worker txpool: [Parachain] Updated revalidation queue at 3. Transactions: {0x84d762e40aa5d13c850d8784b6d2a9432a02322d31248ddf8ad8ada5f311c677: 3}
+
+2022-07-03 11:42:36.329 TRACE tokio-runtime-worker state-db-pin: [Parachain] Unpinned block: 0x74120c2fc1350a3c73831b926c9411a379b222598d8718afacdc8cd5dbccc17e
+2022-07-03 11:42:36.329 TRACE tokio-runtime-worker txpool: [Parachain] [0x84d762e40aa5d13c850d8784b6d2a9432a02322d31248ddf8ad8ada5f311c677] Removed as part of the subtree.
+2022-07-03 11:42:36.329 TRACE tokio-runtime-worker txpool: [Parachain] [0x84d762e40aa5d13c850d8784b6d2a9432a02322d31248ddf8ad8ada5f311c677] WaitingTransaction { imported_at: Instant { t: 587190443436449 }, transaction: Transaction { hash: 0x84d762e40aa5d13c850d8784b6d2a9432a02322d31248ddf8ad8ada5f311c677, priority: 3271, valid_till: 31, bytes: 149, propagate: true, source: TransactionSource::External, requires: [], provides: [d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d00000000], data: 8400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d01e41e6b02bb24a07596524528e2ab80e7ff9e0bbf229b08b50993de613adabc6ae2932e69bfcdf9e81adcd1571179983125e018f6ba515ec88949c526b25ad482040000000a0300be5ddb1579b72e84524fc29e78609e3caf42e85aa118ebfe0b0ad404b5bdd25f1300706415d045ae01}, missing_tags: {}}
+2022-07-03 11:42:36.329 DEBUG tokio-runtime-worker txpool: [Parachain] [0x84d762e40aa5d13c850d8784b6d2a9432a02322d31248ddf8ad8ada5f311c677] Importing to ready
+2022-07-03 11:42:36.329 DEBUG tokio-runtime-worker txpool: [Parachain] Resubmitted. Took 0 ms. Status: PoolStatus { ready: 1, ready_bytes: 149, future: 0, future_bytes: 0 }
+2022-07-03 11:42:36.329 DEBUG tokio-runtime-worker txpool: [Parachain] Revalidated 1 transactions. Left in the queue for revalidation: 0.
+
