@@ -56,11 +56,34 @@ early voters will be rewarded more than the late voters, when the outcome is mor
 -   A parachain node with Pallets specifically to allow for DAO creation
 -   A relay chain node to simulate staking of relay chain native tokens
 -   Frontend allow users to create DAOs easily, allow DAO members to do proposals, votes, etc
-    -   integration with Zeigeist sdk
+-   integration with Zeigeist sdk
 
 ---
 
 ## Hack
+
+### Docker
+
+```sh
+# Run network
+docker-compose --file docker-compose-xc.yml up
+
+# Stop and clear
+docker-compose --file docker-compose-xc.yml down -v && ./scripts/clear-all.sh
+```
+
+_Note: This may take a few minutes for Parachain to start producing blocks as it gets registered_
+
+The relavant ports are:
+
+-   Paradao ws: 9944
+-   Paradao rpc: 9933
+-   Relay ws: 6644
+
+You can then deploy contracts at https://polkadot.js.org/apps/?rpc=ws%3A%2F%2F127.0.0.1%3A9944#/contracts
+The package is contract_name.contract
+
+### Local build collator
 
 Requirements:
 
@@ -70,28 +93,28 @@ Requirements:
 -   jq
 -   curl
 
-### 1. Build the collator for the parachain
+#### 1. Build the collator for the parachain
 
 ```sh
 # root dir
 cargo build --release
 ```
 
-### 2. Run the relay chain
+#### 2. Run the relay chain
 
 ```sh
 docker-compose --file docker-compose-xc.yml up
 ```
 
-### 3. Register and start parachain collator
+#### 3. Register and start parachain collator
 
 _Note: Ensure that step 2 nodes are producing blocks_
 
 ```sh
-./scripts/register-paradao.sh
+	./scripts/local-run-para.sh
 ```
 
-### 4. Tear down
+#### 4. Tear down
 
 ```sh
 docker-compose --file docker-compose-xc.yml down -v && ./scripts/clear_all.sh
