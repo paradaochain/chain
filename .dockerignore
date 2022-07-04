@@ -1,9 +1,13 @@
 .git
+.github
 **/target/
 **/*.txt
 **/*.md
-/docker/
-!/target/release/polkadot-collator
 
 # dotfiles in the repo root
-/.*
+**/.*
+
+# other scripts
+dev_notes/
+contracts/
+**/node_modules

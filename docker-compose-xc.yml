@@ -3,7 +3,7 @@ services:
   validator-alice:
     image: parity/polkadot:v0.9.24
     ports:
-      - '30333:30333'
+      - '40333:30333'
       - '6644:9944'
       - '6633:9933'
     volumes:
@@ -53,6 +53,61 @@ services:
         ipv4_address: 172.28.1.2
         aliases:
           - bob
+
+  paradao-genesis-state:
+    image: paradao/paradao-collator:v0.1.0
+    volumes:
+      - paradao-genesis-state:/data
+    command: >
+      /usr/bin/parachain-collator
+      export-genesis-state
+      --chain /paradao/chainspecs/rococo-local-parachain-2000-raw.json /data/para-2000-genesis
+
+  paradao-wasm-runtime:
+    image: paradao/paradao-collator:v0.1.0
+    volumes:
+      - paradao-wasm-runtime:/data
+    command: >
+      /usr/bin/parachain-collator
+      export-genesis-wasm
+      --chain /paradao/chainspecs/rococo-local-parachain-2000-raw.json /data/para-2000-wasm
+
+  registrar:
+    image: paradao/registrar:v0.1.0
+    volumes:
+      - paradao-genesis-state:/paradao-genesis-state
+      - paradao-wasm-runtime:/paradao-wasm-runtime
+    depends_on:
+      - validator-alice
+      - validator-bob
+      - paradao-wasm-runtime
+      - paradao-genesis-state
+    networks:
+      paradao_net:
+
+  paradao-collator:
+    image: paradao/paradao-collator:v0.1.0
+    ports:
+      - '30333:30333'
+      - '9944:9944'
+      - '9933:9933'
+    volumes:
+      - ./:/data
+    depends_on:
+      - validator-alice
+      - validator-bob
+    command: >
+      /usr/bin/docker-run-paradao-collator.sh
+    networks:
+      paradao_net:
+        ipv4_address: 172.28.1.8
+        aliases:
+          - paradao-collator
+
+
+volumes:
+  paradao-genesis-state:
+  paradao-wasm-runtime:
 
 networks:
   paradao_net:
