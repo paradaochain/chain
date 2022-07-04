@@ -61,7 +61,7 @@ services:
     command: >
       /usr/bin/parachain-collator
       export-genesis-state
-      --chain /paradao/chainspecs/rococo-local-parachain-2000-raw.json /data/para-2000-genesis
+      --chain /chainspecs/rococo-local-parachain-2000-raw.json /data/para-2000-genesis
 
   paradao-wasm-runtime:
     image: paradao/paradao-collator:v0.1.0
@@ -70,7 +70,7 @@ services:
     command: >
       /usr/bin/parachain-collator
       export-genesis-wasm
-      --chain /paradao/chainspecs/rococo-local-parachain-2000-raw.json /data/para-2000-wasm
+      --chain /chainspecs/rococo-local-parachain-2000-raw.json /data/para-2000-wasm
 
   registrar:
     image: paradao/registrar:v0.1.0

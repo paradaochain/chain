@@ -1,4 +1,4 @@
-#/usr/bin/evn bash
+#!/usr/bin/env bash
 
 set -e
 
@@ -11,6 +11,7 @@ fi
 
 
 get_id () {
+    ./wait-for-it.sh "172.28.1.1:9933" -t 100 -- \
     curl -sS -H 'Content-Type: application/json' \
         --data '{"id":1,"jsonrpc":"2.0","method":"system_localPeerId"}' \
         "172.28.1.1:9933" | jq -r '.result'
@@ -18,7 +19,7 @@ get_id () {
 
 echo -e "\n\nStarting collator..."
 # Start collator
-./target/release/parachain-collator \
+/usr/bin/parachain-collator \
 --alice \
 --collator \
 --force-authoring \
@@ -27,6 +28,10 @@ echo -e "\n\nStarting collator..."
 --port 30333 \
 --ws-port 9944 \
 --rpc-port 9933 \
+--unsafe-rpc-external \
+--unsafe-ws-external \
+--no-prometheus \
+--no-telemetry \
 -- \
 --execution wasm \
 --chain /chainspecs/rococo-local-raw.json \
@@ -34,3 +39,5 @@ echo -e "\n\nStarting collator..."
 --ws-port 7744 \
 --rpc-port 7733 \
 --bootnodes "/ip4/172.28.1.1/tcp/30333/p2p/$(get_id)"
+--no-prometheus \
+--no-telemetry
