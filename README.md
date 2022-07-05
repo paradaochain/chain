@@ -83,6 +83,14 @@ The relavant ports are:
 You can then deploy contracts at https://polkadot.js.org/apps/?rpc=ws%3A%2F%2F127.0.0.1%3A9944#/contracts
 The package is contract_name.contract
 
+#### Contracts
+
+-   Go to `contracts/factory` and do `./build-all.sh`
+-   Head to UI to first _upload_ dao wasm - `target/ink/dao/dao.wasm`, obtain the encoded code hash
+-   in the UI.
+-   _upload and intantiate_ the factory contract - `target/ink/factory/factory.contract`, use the param
+    0 and the previous dao contract code hash
+
 ### Local build collator
 
 Requirements:
