@@ -4,8 +4,8 @@ use ink_lang as ink;
 
 #[ink::contract]
 mod factory {
-	use dao::DaoRef;
-	use ink_prelude::string::String;
+	use dao::{dao::DaoType, DaoRef};
+	use ink_prelude::{string::String, vec::Vec};
 
 	#[ink(storage)]
 	pub struct Factory {
@@ -21,10 +21,18 @@ mod factory {
 
 		/// Creates a new dao
 		#[ink(message)]
-		pub fn create_dao(&mut self, name: String, salt: u32) {
+		pub fn create_dao(
+			&mut self,
+			name: String,
+			ty: u32,
+			stars: Option<Vec<AccountId>>,
+			salt: u32,
+		) {
 			self.next_index += 1;
 
-			let _dao = DaoRef::new(name)
+			let daotype = if ty == 0 { DaoType::Fanclub } else { DaoType::Collab };
+
+			let _dao = DaoRef::new(name, daotype, stars)
 				.endowment(0)
 				.code_hash(self.dao_contract_hash)
 				.salt_bytes(salt.to_le_bytes())

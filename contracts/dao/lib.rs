@@ -7,20 +7,20 @@ pub use self::dao::{Dao, DaoRef};
 #[ink::contract]
 pub mod dao {
 
-	use ink_prelude::string::String;
+	use ink_prelude::{string::String, vec::Vec};
 	use ink_storage::{
 		traits::{PackedLayout, SpreadAllocate, SpreadLayout},
 		Mapping,
 	};
 
+	use ink_lang::utils::initialize_contract;
+	use ink_storage::traits::KeyPtr;
+
 	/// A Transaction is what `Proposers` can submit for voting.
 	/// If votes pass a threshold, it will be executed by the DAO.
 	/// Note: Struct from ink repo: multisig example
-	#[derive(scale::Encode, scale::Decode, SpreadLayout, PackedLayout, Clone)]
-	#[cfg_attr(
-		feature = "std",
-		derive(Debug, PartialEq, Eq, scale_info::TypeInfo, ink_storage::traits::StorageLayout)
-	)]
+	#[derive(scale::Encode, scale::Decode, SpreadLayout, PackedLayout, Clone, Debug)]
+	#[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink_storage::traits::StorageLayout))]
 	pub struct Transaction {
 		/// The `AccountId` of the contract that is called in this transaction.
 		pub callee: AccountId,
@@ -69,7 +69,7 @@ pub mod dao {
 	}
 
 	impl Proposal {
-		pub fn update_status(&self, current_block_num: BlockNumber, executed: bool) {
+		pub fn update_status(&mut self, current_block_num: BlockNumber, executed: bool) {
 			if executed {
 				self.status = ProposalStatus::Executed;
 			} else if current_block_num >= self.expires {
@@ -82,15 +82,26 @@ pub mod dao {
 		}
 
 		pub fn can_execute(&self) -> bool {
-			return self.status == ProposalStatus::Passed;
+			self.status == ProposalStatus::Passed
 		}
 	}
 
-	#[derive(scale::Encode, scale::Decode, Clone, Copy, SpreadLayout, PackedLayout, Debug)]
+	#[derive(
+		scale::Encode, scale::Decode, Clone, Copy, SpreadLayout, PackedLayout, Debug, PartialEq,
+	)]
 	#[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink_storage::traits::StorageLayout))]
 	pub enum DaoType {
 		Fanclub,
 		Collab,
+	}
+
+	// TODO impl
+	impl SpreadAllocate for DaoType {
+		#[inline]
+		fn allocate_spread(ptr: &mut KeyPtr) -> Self {
+			ptr.advance_by(<BlockNumber>::FOOTPRINT * 2);
+			Self::Fanclub
+		}
 	}
 
 	/// Roles in the DAO
@@ -111,6 +122,7 @@ pub mod dao {
 	}
 
 	#[ink(storage)]
+	#[derive(SpreadAllocate)]
 	pub struct Dao {
 		name: String,
 		ty: DaoType,
@@ -118,17 +130,33 @@ pub mod dao {
 		proposals: Mapping<u32, Proposal>,
 	}
 
+	#[derive(scale::Encode, scale::Decode, Debug)]
+	#[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink_storage::traits::StorageLayout))]
+	pub struct Info {
+		name: String,
+		ty: DaoType,
+	}
+
 	impl Dao {
-		/// Constructor that initializes the `bool` value to the given `init_value`.
 		#[ink(constructor)]
-		pub fn new(name: String, ty: DaoType, admin: Option<Vec<AccountId>>) -> Self {
-			Self { name }
+		pub fn new(name: String, ty: DaoType, stars: Option<Vec<AccountId>>) -> Self {
+			initialize_contract(|c: &mut Self| {
+				c.name = name;
+				c.ty = ty;
+				if let Some(s) = stars {
+					if ty == DaoType::Fanclub {
+						for each in s {
+							c.members.insert(each, &Role::Star);
+						}
+					}
+				}
+			})
 		}
 
 		/// Simply returns the current value of our `bool`.
 		#[ink(message)]
-		pub fn name(&self) -> String {
-			self.name.clone()
+		pub fn info(&self) -> Info {
+			Info { name: self.name.clone(), ty: self.ty }
 		}
 	}
 
@@ -140,14 +168,22 @@ pub mod dao {
 		/// Imports all the definitions from the outer scope so we can use them here.
 		use super::*;
 
+		use ink_env::test;
 		/// Imports `ink_lang` so we can use `#[ink::test]`.
 		use ink_lang as ink;
+
+		fn default_accounts() -> test::DefaultAccounts<Environment> {
+			ink_env::test::default_accounts::<Environment>()
+		}
 
 		/// We test a simple use case of our contract.
 		#[ink::test]
 		fn it_works() {
-			let dao = Dao::new(String::from("newDAO"));
-			assert_eq!(dao.name(), "newDAO");
+			let test_accounts = default_accounts();
+			let dao =
+				Dao::new(String::from("newDAO"), DaoType::Fanclub, Some(vec![test_accounts.alice]));
+			assert_eq!(dao.info().name, "newDAO");
+			assert_eq!(dao.info().ty, DaoType::Fanclub);
 		}
 	}
 }
