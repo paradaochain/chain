@@ -28,9 +28,8 @@ mod factory {
 			stars: Option<Vec<AccountId>>,
 			salt: u32,
 		) {
-			self.next_index += 1;
-
 			let daotype = if ty == 0 { DaoType::Fanclub } else { DaoType::Collab };
+			ink_env::debug_println!("create DAO at {}", Self::env().block_number());
 
 			let _dao = DaoRef::new(name, daotype, stars)
 				.endowment(0)
@@ -38,6 +37,7 @@ mod factory {
 				.salt_bytes(salt.to_le_bytes())
 				.instantiate()
 				.unwrap_or_else(|error| {
+					ink_env::debug_println!("ERROR at createing DAO {:?}", error);
 					panic!("failed at instantiating the DAO contract: {:?}", error)
 				});
 			self.next_index += 1;
@@ -50,26 +50,28 @@ mod factory {
 		}
 	}
 
-	/// Unit tests in Rust are normally defined within such a `#[cfg(test)]`
-	/// module and test functions are marked with a `#[test]` attribute.
-	/// The below code is technically just normal Rust code.
-	#[cfg(test)]
-	mod tests {
-		/// Imports all the definitions from the outer scope so we can use them here.
-		use super::*;
+	// #[cfg(test)]
+	// mod tests {
+	// 	/// Imports all the definitions from the outer scope so we can use them here.
+	// 	use super::*;
 
-		use ink_env::Hash;
-		/// Imports `ink_lang` so we can use `#[ink::test]`.
-		use ink_lang as ink;
+	// 	use ink_env::{test, Hash};
+	// 	/// Imports `ink_lang` so we can use `#[ink::test]`.
+	// 	use ink_lang as ink;
 
-		/// We test a simple use case of our contract.
-		#[ink::test]
-		fn it_works() {
-			let hash: Hash = [0; 32].try_into().unwrap();
-			let mut factory = Factory::new(0, hash);
-			assert_eq!(factory.get_next_index(), 0);
-			factory.create_dao("new".into());
-			assert_eq!(factory.get_next_index(), 1);
-		}
-	}
+	// 	fn default_accounts() -> test::DefaultAccounts<Environment> {
+	// 		ink_env::test::default_accounts::<Environment>()
+	// 	}
+
+	// 	/// We test a simple use case of our contract.
+	// 	#[ink::test]
+	// 	fn it_works() {
+	// 		let hash: Hash = [0; 32].try_into().unwrap();
+	// 		let test_accounts = default_accounts();
+	// 		let mut factory = Factory::new(0, hash);
+	// 		assert_eq!(factory.get_next_index(), 0);
+	// 		factory.create_dao(String::from("newDAO"), 0, Some(vec![test_accounts.alice]), 12);
+	// 		assert_eq!(factory.get_next_index(), 1);
+	// 	}
+	// }
 }

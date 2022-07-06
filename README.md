@@ -86,10 +86,11 @@ The package is contract_name.contract
 #### Contracts
 
 -   Go to `contracts/factory` and do `./build-all.sh`
--   Head to UI to first _upload_ dao wasm - `target/ink/dao/dao.wasm`, obtain the encoded code hash
--   in the UI.
+-   Head to UI to first _upload_ dao wasm - `target/ink/dao/dao.wasm`.
+-   Once the upload tx has been included in the block, obtain the code hash in the `Event` (under
+-   Network: Chain Info) in the UI.
 -   _upload and intantiate_ the factory contract - `target/ink/factory/factory.contract`, use the param
-    0 and the previous dao contract code hash
+    0 and the previous dao contract code hash (`ty` will change the structure of daos)
 
 ### Local build collator
 
