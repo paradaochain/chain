@@ -32,6 +32,7 @@ echo -e "\n\nStarting collator..."
 --unsafe-ws-external \
 --no-prometheus \
 --no-telemetry \
+--rpc-cors=all \
 -- \
 --execution wasm \
 --chain /chainspecs/rococo-local-raw.json \
