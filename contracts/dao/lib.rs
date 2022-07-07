@@ -16,6 +16,22 @@ pub mod dao {
 	use ink_lang::utils::initialize_contract;
 	use ink_storage::traits::KeyPtr;
 
+	pub type ProposalId = u32;
+	/// Number of blocks until proposal expires from the proposed block
+	const EXPIRATION_BLOCK_FROM_NOW: BlockNumber = 250;
+
+	/// Total member div this number as threshold
+	const PROPOSAL_THRESHOLD_DIV: u32 = 2;
+
+	/// Errors that can occur upon calling this contract.
+	#[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
+	#[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
+	pub enum Error {
+		NotEnoughMembers,
+		ThresholdError,
+		Overflow,
+	}
+
 	/// A Transaction is what `Proposers` can submit for voting.
 	/// If votes pass a threshold, it will be executed by the DAO.
 	/// Note: Struct from ink repo: multisig example
@@ -46,15 +62,14 @@ pub mod dao {
 		Executed,
 	}
 
-	#[derive(SpreadLayout, Debug, SpreadAllocate)]
+	#[derive(scale::Encode, scale::Decode, PackedLayout, SpreadLayout, Debug, SpreadAllocate)]
 	#[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink_storage::traits::StorageLayout))]
 	pub struct Votes {
-		pub ballots: Mapping<AccountId, bool>,
 		pub yes: u32,
 		pub no: u32,
 	}
 
-	#[derive(SpreadLayout, Debug)]
+	#[derive(scale::Encode, scale::Decode, PackedLayout, SpreadLayout, Debug)]
 	#[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink_storage::traits::StorageLayout))]
 	pub struct Proposal {
 		pub title: String,
@@ -64,11 +79,32 @@ pub mod dao {
 		pub status: ProposalStatus,
 		/// Number of votes required to pass = 0.5 total voters the time this was proposed
 		pub threshold: u32,
-		/// Votes recorded for this proposal
 		pub votes: Votes,
 	}
 
 	impl Proposal {
+		pub fn new(
+			title: String,
+			proposer: AccountId,
+			current_block: BlockNumber,
+			tx: Transaction,
+			members_count: u32,
+		) -> Result<Self, Error> {
+			let threshold =
+				members_count.checked_div(PROPOSAL_THRESHOLD_DIV).ok_or(Error::ThresholdError)?;
+			let expires =
+				current_block.checked_add(EXPIRATION_BLOCK_FROM_NOW).ok_or(Error::Overflow)?;
+			Ok(Self {
+				title,
+				proposer,
+				expires,
+				tx,
+				status: ProposalStatus::Voting,
+				threshold,
+				votes: Votes { yes: 1, no: 0 },
+			})
+		}
+
 		pub fn update_status(&mut self, current_block_num: BlockNumber, executed: bool) {
 			if executed {
 				self.status = ProposalStatus::Executed;
@@ -124,10 +160,22 @@ pub mod dao {
 	#[ink(storage)]
 	#[derive(SpreadAllocate)]
 	pub struct Dao {
+		/// name of dao
 		name: String,
+		/// Governance type
 		ty: DaoType,
+		/// min fee to join
+		fee: Balance,
+		/// Members list
 		members: Mapping<AccountId, Role>,
+		/// Members count
+		member_count: u32,
+		/// Current proposals
 		proposals: Mapping<u32, Proposal>,
+		/// total number of proposals
+		next_proposal_id: u32,
+		/// Proposal Id and its Voting status
+		votes: Mapping<(u32, AccountId), bool>,
 	}
 
 	#[derive(scale::Encode, scale::Decode, Debug)]
@@ -135,14 +183,16 @@ pub mod dao {
 	pub struct Info {
 		name: String,
 		ty: DaoType,
+		fee: Balance,
 	}
 
 	impl Dao {
 		#[ink(constructor)]
-		pub fn new(name: String, ty: DaoType, stars: Option<Vec<AccountId>>) -> Self {
+		pub fn new(name: String, ty: DaoType, fee: Balance, stars: Option<Vec<AccountId>>) -> Self {
 			initialize_contract(|c: &mut Self| {
 				c.name = name;
 				c.ty = ty;
+				c.fee = fee;
 				if let Some(s) = stars {
 					if ty == DaoType::Fanclub {
 						for each in s {
@@ -153,10 +203,70 @@ pub mod dao {
 			})
 		}
 
-		/// Simply returns the current value of our `bool`.
+		/// Returns some useful info for the DAO
 		#[ink(message)]
 		pub fn info(&self) -> Info {
-			Info { name: self.name.clone(), ty: self.ty }
+			Info { name: self.name.clone(), ty: self.ty, fee: self.fee }
+		}
+
+		/// Return stars
+		#[ink(message)]
+		pub fn role_of(&self, member: AccountId) -> Option<Role> {
+			self.members.get(member)
+		}
+
+		/// Return total number of members
+		#[ink(message)]
+		pub fn total_members(&self) -> u32 {
+			self.member_count
+		}
+
+		/// Return total proposals
+		#[ink(message)]
+		pub fn total_proposals(&self) -> u32 {
+			self.next_proposal_id
+		}
+
+		/// Joing a DAO as a member
+		#[ink(message, payable)]
+		pub fn join(&mut self) {
+			let caller = self.env().caller();
+			assert!(self.env().transferred_value() >= self.fee);
+			self.members.insert(caller, &Role::Member);
+			let count = self.member_count;
+			self.member_count = count.checked_add(1).expect("Overflow");
+		}
+
+		#[ink(message)]
+		pub fn propose(&mut self, proposal_tx: Transaction, title: String) -> u32 {
+			self.ensure_caller_is_member();
+			let pid = self.next_proposal_id;
+			let proposer = self.env().caller();
+			let proposal = Proposal::new(
+				title,
+				proposer,
+				self.env().block_number(),
+				proposal_tx,
+				self.member_count,
+			)
+			.unwrap_or_else(|error| panic!("failed at create proposal {:?}", error));
+
+			self.proposals.insert(pid, &proposal);
+
+			self.votes.insert((pid, proposer), &true);
+			self.next_proposal_id = pid.checked_add(1).expect("Overflow");
+			pid
+		}
+
+		// Helpers
+		/// Panic if the sender is not self
+		/// Usually used to promote members
+		fn ensure_from_dao(&self) {
+			assert_eq!(self.env().caller(), self.env().account_id());
+		}
+
+		fn ensure_caller_is_member(&self) {
+			assert!(self.members.contains(self.env().caller()));
 		}
 	}
 
@@ -176,14 +286,23 @@ pub mod dao {
 			ink_env::test::default_accounts::<Environment>()
 		}
 
+		fn create_fanclub_dao(stars: Vec<AccountId>) -> Dao {
+			Dao::new(String::from("newDAO"), DaoType::Fanclub, 2, Some(stars))
+		}
+
 		/// We test a simple use case of our contract.
 		#[ink::test]
-		fn it_works() {
+		fn create_dao_works() {
 			let test_accounts = default_accounts();
-			let dao =
-				Dao::new(String::from("newDAO"), DaoType::Fanclub, Some(vec![test_accounts.alice]));
+			let dao = create_fanclub_dao(vec![test_accounts.alice, test_accounts.bob]);
 			assert_eq!(dao.info().name, "newDAO");
 			assert_eq!(dao.info().ty, DaoType::Fanclub);
 		}
+
+		//		#[ink::test]
+		//		fn proposal_works() {
+		//			let test_accounts = default_accounts();
+		//			let dao =  create_fanclub_dao(vec![test_accounts.alice, test_accounts.bob])
+		//		}
 	}
 }
