@@ -104,6 +104,25 @@ services:
         aliases:
           - paradao-collator
 
+  zeitgeist-dev:
+    image: zeitgeistpm/zeitgeist-node:723171517d5c7ea94b9bb22ea9289c2dd8d7fc5f
+    ports:
+      - '20333:30333'
+      - '8844:9944'
+      - '8833:9933'
+    volumes:
+      - ./:/data
+    command:
+      - --dev
+      - --base-path=/data/.tmp_zg_data
+      - --port=30333
+      - --ws-port=9944
+      - --rpc-port=9933
+      - --rpc-cors=all
+      - --unsafe-rpc-external
+      - --unsafe-ws-external
+      - --no-prometheus
+      - --no-telemetry
 
 volumes:
   paradao-genesis-state:
