@@ -37,8 +37,7 @@ mod factory {
 			name: String,
 			ty: u32,
 			fee: Balance,
-			stars: Option<Vec<AccountId>>,
-			salt: u32,
+			stars: Option<Vec<AccountId>>
 		) {
 			let daotype = if ty == 0 { DaoType::Fanclub } else { DaoType::Collab };
 			ink_env::debug_println!("create DAO at {}", Self::env().block_number());
@@ -46,7 +45,7 @@ mod factory {
 			let new_dao = DaoRef::new(name, daotype, fee, stars)
 				.endowment(0)
 				.code_hash(self.dao_contract_hash)
-				.salt_bytes(salt.to_le_bytes())
+				.salt_bytes(self.next_index.to_le_bytes())
 				.params();
 
 			let addr = self.env().instantiate_contract(&new_dao).unwrap_or_else(|error| {
