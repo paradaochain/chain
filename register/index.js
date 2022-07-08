@@ -11,9 +11,10 @@ async function main () {
   const port = process.argv[3];
   const runtimePath = process.argv[4];
   const genesisState = process.argv[5];
+  const expectedParaId = process.argv[6];
 
-  const runtimeFile = fs.readFileSync(path.resolve(__dirname, runtimePath)).toString();
-  const genesisFile = fs.readFileSync(path.resolve(__dirname, genesisState)).toString();
+  const paradao_runtimeFile = fs.readFileSync(path.resolve(__dirname, runtimePath)).toString();
+  const paradao_genesisFile = fs.readFileSync(path.resolve(__dirname, genesisState)).toString();
 
   const wsProvider = new WsProvider(`ws://${ip}:${port}`);
 
@@ -37,8 +38,8 @@ async function main () {
            console.log('\t', phase.toString(), `: ${section}.${method}`, data.toString());
      		if (section == "registrar" && method == "Reserved"){
      			registeredId = data[0].toString();
-				if (registeredId != "2000") {
-					console.log("\n\nPlease restart Relay Chain, expect 2000 but got: ", registeredId)
+				if (registeredId != expectedParaId) {
+					console.log("\n\nPlease restart Relay Chain, expect " + expectedParaId + " but got: ", registeredId)
 					process.exit(1)
 				}
      		}

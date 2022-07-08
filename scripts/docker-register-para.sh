@@ -40,6 +40,8 @@ wait_for_file () {
 
 wait_for_file /paradao-wasm-runtime/para-2000-wasm
 wait_for_file /paradao-genesis-state/para-2000-genesis
+wait_for_file /zeigeist-wasm-runtime/para-2101-wasm
+wait_for_file /zeigeist-genesis-state/para-2101-genesis
 
 /wait-for-it.sh 172.28.1.1:9944 \
      \
@@ -48,6 +50,15 @@ wait_for_file /paradao-genesis-state/para-2000-genesis
     node /var/tmp/register \
         172.28.1.1 9944 \
         /paradao-wasm-runtime/para-2000-wasm \
-        /paradao-genesis-state/para-2000-genesis
+        /paradao-genesis-state/para-2000-genesis \
+        /2000
 
+
+/wait-for-it.sh 172.28.1.1:9944 \
+    -- \
+    node /var/tmp/register \
+        172.28.1.1 9944 \
+        /zeigeist-wasm-runtime/para-2001-wasm \
+        /zeiteist-genesis-state/para-2001-genesis \
+        /2001
 

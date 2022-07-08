@@ -30,7 +30,7 @@ services:
   validator-bob:
     image: parity/polkadot:v0.9.24
     ports:
-      - '30334:30333'
+      - '50333:30333'
       - '6677:9944'
       - '6655:9933'
     volumes:
@@ -77,11 +77,15 @@ services:
     volumes:
       - paradao-genesis-state:/paradao-genesis-state
       - paradao-wasm-runtime:/paradao-wasm-runtime
+      - zeitgeist-genesis-state:/zeitgeist-genesis-state
+      - zeitgeist-wasm-runtime:/zeitgeist-wasm-runtime
     depends_on:
       - validator-alice
       - validator-bob
       - paradao-wasm-runtime
       - paradao-genesis-state
+      - zeitgeist-wasm-runtime
+      - zeitgeist-genesis-state
     networks:
       paradao_net:
 
@@ -104,10 +108,48 @@ services:
         aliases:
           - paradao-collator
 
+  zeitgeist-collator:
+    image: zeitgeistpm/zeitgeist-node-parachain:sha-6f3673f
+    ports:
+      - 20333:30333
+      - 8844: 9944
+      - 8833: 8833
+    volumes:
+      - ./:/data
+    depends_on:
+      - validator-alice
+      - validator-bob
+    command: >
+      /data/scripts/docker-run-zeitgeist-collator.sh
+    networks:
+      paradao_net:
+        ipv4_address: 172.28.1.8
+        aliases:
+          - zeitgeist-collator
+
+  zeitgeist-genesis-state:
+    image: zeitgeistpm/zeitgeist-node-parachain:sha-6f3673f
+    volumes:
+      - zeitgeist-genesis-state:/data
+    command: >
+      /usr/local/bin/zeitgeist
+      export-genesis-state
+      --chain /chainspecs/rococo-local-parachain-2001-raw.json /data/para-2001-genesis
+
+  zeitgeist-wasm-runtime:
+    image: zeitgeistpm/zeitgeist-node-parachain:sha-6f3673f
+    volumes:
+      - zeitgeist-wasm-runtime:/data
+    command: >
+      /usr/local/bin/zeitgeist
+      export-genesis-wasm
+      --chain /chainspecs/rococo-local-parachain-2001-raw.json /data/para-2001-wasm
 
 volumes:
   paradao-genesis-state:
   paradao-wasm-runtime:
+  zeitgeist-genesis-state:
+  zeitgeist-wasm-runtime:
 
 networks:
   paradao_net:
