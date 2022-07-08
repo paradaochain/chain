@@ -31,6 +31,7 @@ default = ["std"]
 std = [
     "ink_metadata/std",
     "ink_env/std",
+    "ink_lang/std",
     "ink_storage/std",
     "ink_primitives/std",
     "scale/std",

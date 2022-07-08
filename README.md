@@ -112,7 +112,7 @@ cargo build --release
 #### 2. Run the relay chain
 
 ```sh
-docker-compose --file docker-compose-xc.yml up
+docker-compose --file docker-compose-xc-local.yml up
 ```
 
 #### 3. Register and start parachain collator
@@ -126,5 +126,5 @@ _Note: Ensure that step 2 nodes are producing blocks_
 #### 4. Tear down
 
 ```sh
-docker-compose --file docker-compose-xc.yml down -v && ./scripts/clear_all.sh
+docker-compose --file docker-compose-xc-local.yml down -v && ./scripts/clear-all.sh
 ```

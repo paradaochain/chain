@@ -30,6 +30,7 @@ pub mod dao {
 		NotEnoughMembers,
 		ThresholdError,
 		Overflow,
+		Expired,
 	}
 
 	/// A Transaction is what `Proposers` can submit for voting.
@@ -75,7 +76,7 @@ pub mod dao {
 		pub title: String,
 		pub proposer: AccountId,
 		pub expires: BlockNumber,
-		pub tx: Transaction,
+		pub tx: ProposalType,
 		pub status: ProposalStatus,
 		/// Number of votes required to pass = 0.5 total voters the time this was proposed
 		pub threshold: u32,
@@ -87,7 +88,7 @@ pub mod dao {
 			title: String,
 			proposer: AccountId,
 			current_block: BlockNumber,
-			tx: Transaction,
+			tx: ProposalType,
 			members_count: u32,
 		) -> Result<Self, Error> {
 			let threshold =
@@ -105,16 +106,22 @@ pub mod dao {
 			})
 		}
 
-		pub fn update_status(&mut self, current_block_num: BlockNumber, executed: bool) {
+		pub fn update_status(&mut self, executed: bool) {
 			if executed {
 				self.status = ProposalStatus::Executed;
-			} else if current_block_num >= self.expires {
-				self.status = ProposalStatus::Expired;
 			} else if self.votes.yes >= self.threshold {
 				self.status = ProposalStatus::Passed;
 			} else if self.votes.no >= self.threshold {
 				self.status = ProposalStatus::Rejected;
 			}
+		}
+
+		pub fn ensure_not_expired(&mut self, current_block_num: BlockNumber) -> Result<(), Error> {
+			if current_block_num >= self.expires {
+				self.status = ProposalStatus::Expired;
+				return Err(Error::Expired);
+			}
+			Ok(())
 		}
 
 		pub fn can_execute(&self) -> bool {
@@ -129,6 +136,13 @@ pub mod dao {
 	pub enum DaoType {
 		Fanclub,
 		Collab,
+	}
+
+	#[derive(scale::Encode, scale::Decode, Clone, SpreadLayout, PackedLayout, Debug)]
+	#[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink_storage::traits::StorageLayout))]
+	pub enum ProposalType {
+		Treasury,
+		InkCall(Transaction),
 	}
 
 	// TODO impl
@@ -171,11 +185,11 @@ pub mod dao {
 		/// Members count
 		member_count: u32,
 		/// Current proposals
-		proposals: Mapping<u32, Proposal>,
+		proposals: Mapping<ProposalId, Proposal>,
 		/// total number of proposals
-		next_proposal_id: u32,
+		next_proposal_id: ProposalId,
 		/// Proposal Id and its Voting status
-		votes: Mapping<(u32, AccountId), bool>,
+		votes: Mapping<(ProposalId, AccountId), bool>,
 	}
 
 	#[derive(scale::Encode, scale::Decode, Debug)]
@@ -227,6 +241,16 @@ pub mod dao {
 			self.next_proposal_id
 		}
 
+		/// Returns proposal info
+		#[ink(message)]
+		pub fn proposal_info(&self, proposal_id: ProposalId) -> Proposal {
+			let p = self.proposals.get(proposal_id);
+			assert!(p.is_some(), "No such proposal");
+			p.unwrap()
+		}
+
+		/// Returns use vote status for the proposal
+
 		/// Joing a DAO as a member
 		#[ink(message, payable)]
 		pub fn join(&mut self) {
@@ -238,7 +262,7 @@ pub mod dao {
 		}
 
 		#[ink(message)]
-		pub fn propose(&mut self, proposal_tx: Transaction, title: String) -> u32 {
+		pub fn propose(&mut self, proposal_type: ProposalType, title: String) -> u32 {
 			self.ensure_caller_is_member();
 			let pid = self.next_proposal_id;
 			let proposer = self.env().caller();
@@ -246,7 +270,7 @@ pub mod dao {
 				title,
 				proposer,
 				self.env().block_number(),
-				proposal_tx,
+				proposal_type,
 				self.member_count,
 			)
 			.unwrap_or_else(|error| panic!("failed at create proposal {:?}", error));
@@ -258,6 +282,29 @@ pub mod dao {
 			pid
 		}
 
+		#[ink(message)]
+		pub fn vote(&mut self, proposal_id: ProposalId, vote: bool) {
+			self.ensure_caller_is_member();
+			self.ensure_new_vote(proposal_id);
+			let key = (proposal_id, self.env().caller());
+			self.votes.insert(key, &vote);
+			let proposal = self.proposals.get(&proposal_id);
+			if let Some(mut p) = proposal {
+				p.ensure_not_expired(self.env().block_number()).expect("Expired");
+				self.proposals.remove(&proposal_id);
+				if vote {
+					let yes = p.votes.yes;
+					p.votes.yes = yes.checked_add(1).expect("Overflow")
+				} else {
+					let no = p.votes.no;
+					p.votes.no = no.checked_add(1).expect("Overflow")
+				}
+				p.update_status(false);
+			} else {
+				panic!("No such propoal")
+			}
+		}
+
 		// Helpers
 		/// Panic if the sender is not self
 		/// Usually used to promote members
@@ -266,7 +313,11 @@ pub mod dao {
 		}
 
 		fn ensure_caller_is_member(&self) {
-			assert!(self.members.contains(self.env().caller()));
+			assert!(self.members.contains(self.env().caller()), "Not caller");
+		}
+
+		fn ensure_new_vote(&self, proposal_id: u32) {
+			assert!(!self.votes.contains((proposal_id, self.env().caller())), "Repeated vote");
 		}
 	}
 

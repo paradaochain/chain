@@ -3328,6 +3328,7 @@ dependencies = [
  "derive_more",
  "ink_env",
  "ink_lang_macro",
+ "ink_metadata",
  "ink_prelude",
  "ink_primitives",
  "ink_storage",
