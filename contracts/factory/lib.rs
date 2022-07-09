@@ -38,7 +38,7 @@ mod factory {
 			metadata_url: String,
 			ty: u32,
 			joining_fee: Balance,
-			init_members: Vec<(AccountId, String, Role)>,
+			init_members: Option<Vec<(AccountId, String, Role)>>,
 			salt: u32,
 		) {
 			let daotype = if ty == 0 { DaoType::Fanclub } else { DaoType::Collab };

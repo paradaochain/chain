@@ -235,30 +235,23 @@ pub mod dao {
 			metadata_url: String,
 			ty: DaoType,
 			joining_fee: Balance,
-			init_members: Vec<(AccountId, String, Role)>,
+			init_members: Option<Vec<(AccountId, String, Role)>>,
 		) -> Self {
-			initialize_contract(|c| {
-				Self::new_init(c, name, ty, joining_fee, init_members, metadata_url)
-			})
-		}
+			initialize_contract(|c: &mut Self| {
+				c.name = name;
+				c.ty = ty;
+				c.fee = joining_fee;
+				c.metadata_url = metadata_url;
+				c.members = <Mapping<AccountId, (String, Role)>>::default();
 
-		fn new_init(
-			&mut self,
-			name: String,
-			ty: DaoType,
-			joining_fee: Balance,
-			init_members: Vec<(AccountId, String, Role)>,
-			metadata_url: String,
-		) {
-			self.name = name;
-			self.ty = ty;
-			self.fee = joining_fee;
-			self.metadata_url = metadata_url;
-			for each in &init_members {
-				self.members.insert(each.0, &(each.1.clone(), each.2));
-				self.member_count += 1;
-				self.env().emit_event(Joined { account: each.0 });
-			}
+				if let Some(i) = init_members {
+					for each in i {
+						c.members.insert(each.0, &(each.1.clone(), each.2));
+						c.member_count += 1;
+						c.env().emit_event(Joined { account: each.0 });
+					}
+				}
+			})
 		}
 
 		/// Returns some useful info for the DAO
@@ -427,9 +420,15 @@ pub mod dao {
 
 		fn create_collab_dao(
 			joining_fee: Balance,
-			init_members: Vec<(AccountId, String, Role)>,
+			init_members: Option<Vec<(AccountId, String, Role)>>,
 		) -> Dao {
-			Dao::new(String::from("newDAO"), DaoType::Collab, joining_fee, init_members)
+			Dao::new(
+				String::from("newDAO"),
+				String::from("ipfs"),
+				DaoType::Collab,
+				joining_fee,
+				init_members,
+			)
 		}
 
 		/// We test a simple use case of our contract.
@@ -438,11 +437,11 @@ pub mod dao {
 			let test_accounts = default_accounts();
 			let dao = create_collab_dao(
 				2,
-				vec![
+				Some(vec![
 					(test_accounts.alice, String::from("did:alice"), Role::Star),
 					(test_accounts.bob, String::from("did:bob"), Role::Collab),
 					(test_accounts.charlie, String::from("did:charlie"), Role::Member),
-				],
+				]),
 			);
 			assert_eq!(dao.info().name, "newDAO");
 			assert_eq!(dao.info().ty, DaoType::Collab);
