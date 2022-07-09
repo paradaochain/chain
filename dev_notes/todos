@@ -1,10 +1,19 @@
 
-TODO: links to
+Demo:
 
-make readme mdbook
+Collab
+- Some people create collab (no admin role)
+- script: 20 people join
+- Member99 sends DOT from relay to paradao chain
+- Member99 joins DAO by paying membership fees
+- Member88 create proposal with PM  (2 options: create_proposal, create_proposal_with_pm)
+- Member99 vote with OAT (2 options: vote, vote_with_oat)  Outcome Asset Token
+- Member88 provide oracle result to PM
 
+Smart contracts
 Governance
-- did support of membership
-- membership type
-- voting power table
+- add did field to join (store in members)
+- voting power table (membership type to weight)
 - make paradao a dao with fees
+
+links to doc
