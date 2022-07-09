@@ -31,6 +31,10 @@ pub mod dao {
 		ThresholdError,
 		Overflow,
 		Expired,
+		NotFound,
+		NotExecutable,
+		NotEnoughFunds,
+		NotSupportedTx,
 	}
 
 	/// A Transaction is what `Proposers` can submit for voting.
@@ -118,7 +122,11 @@ pub mod dao {
 
 		pub fn ensure_not_expired(&mut self, current_block_num: BlockNumber) -> Result<(), Error> {
 			if current_block_num >= self.expires {
-				self.status = ProposalStatus::Expired;
+				// we do not need to update to if votes passed a threshold
+				// as members can only vote once and no revoting
+				if self.status == ProposalStatus::Voting {
+					self.status = ProposalStatus::Expired;
+				}
 				return Err(Error::Expired);
 			}
 			Ok(())
@@ -138,11 +146,15 @@ pub mod dao {
 		Collab,
 	}
 
+	/// Type of proposal:
+	/// We provide simple DAO operation and generic proxy call
 	#[derive(scale::Encode, scale::Decode, Clone, SpreadLayout, PackedLayout, Debug)]
 	#[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink_storage::traits::StorageLayout))]
 	pub enum ProposalType {
-		Treasury,
-		InkCall(Transaction),
+		/// Send funds: Balance to an account: AccountId from the treasury
+		Treasury(AccountId, Balance),
+		/// Have the DAO proxy this action, e.g. calling another contract
+		Proxy(Transaction),
 	}
 
 	// TODO impl
@@ -253,16 +265,21 @@ pub mod dao {
 
 		/// Joing a DAO as a member
 		#[ink(message, payable)]
-		pub fn join(&mut self) {
+		pub fn join(&mut self) -> Result<(), Error> {
 			let caller = self.env().caller();
 			assert!(self.env().transferred_value() >= self.fee);
 			self.members.insert(caller, &Role::Member);
 			let count = self.member_count;
-			self.member_count = count.checked_add(1).expect("Overflow");
+			self.member_count = count.checked_add(1).ok_or(Error::Overflow)?;
+			Ok(())
 		}
 
 		#[ink(message)]
-		pub fn propose(&mut self, proposal_type: ProposalType, title: String) -> u32 {
+		pub fn propose(
+			&mut self,
+			proposal_type: ProposalType,
+			title: String,
+		) -> Result<u32, Error> {
 			self.ensure_caller_is_member();
 			let pid = self.next_proposal_id;
 			let proposer = self.env().caller();
@@ -272,36 +289,52 @@ pub mod dao {
 				self.env().block_number(),
 				proposal_type,
 				self.member_count,
-			)
-			.unwrap_or_else(|error| panic!("failed at create proposal {:?}", error));
+			)?;
 
 			self.proposals.insert(pid, &proposal);
-
 			self.votes.insert((pid, proposer), &true);
 			self.next_proposal_id = pid.checked_add(1).expect("Overflow");
-			pid
+			Ok(pid)
 		}
 
 		#[ink(message)]
-		pub fn vote(&mut self, proposal_id: ProposalId, vote: bool) {
+		pub fn vote(&mut self, proposal_id: ProposalId, vote: bool) -> Result<(), Error> {
 			self.ensure_caller_is_member();
 			self.ensure_new_vote(proposal_id);
 			let key = (proposal_id, self.env().caller());
 			self.votes.insert(key, &vote);
 			let proposal = self.proposals.get(&proposal_id);
 			if let Some(mut p) = proposal {
-				p.ensure_not_expired(self.env().block_number()).expect("Expired");
+				p.ensure_not_expired(self.env().block_number())?;
 				self.proposals.remove(&proposal_id);
 				if vote {
 					let yes = p.votes.yes;
-					p.votes.yes = yes.checked_add(1).expect("Overflow")
+					p.votes.yes = yes.checked_add(1).ok_or(Error::Overflow)?;
 				} else {
 					let no = p.votes.no;
-					p.votes.no = no.checked_add(1).expect("Overflow")
+					p.votes.no = no.checked_add(1).ok_or(Error::Overflow)?;
 				}
 				p.update_status(false);
+				Ok(())
 			} else {
-				panic!("No such propoal")
+				Err(Error::NotFound)
+			}
+		}
+
+		#[ink(message)]
+		pub fn execute(&mut self, proposal_id: ProposalId) -> Result<(), Error> {
+			if let Some(p) = self.proposals.get(&proposal_id) {
+				if p.status != ProposalStatus::Passed {
+					return Err(Error::NotExecutable);
+				}
+				if let ProposalType::Treasury(to, balance) = p.tx {
+					self.env().transfer(to, balance).map_err(|_| Error::NotEnoughFunds)?;
+					Ok(())
+				} else {
+					return Err(Error::NotSupportedTx);
+				}
+			} else {
+				Err(Error::NotFound)
 			}
 		}
 
