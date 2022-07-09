@@ -35,6 +35,7 @@ mod factory {
 		pub fn create_dao(
 			&mut self,
 			name: String,
+			metadata_url: String,
 			ty: u32,
 			joining_fee: Balance,
 			init_members: Vec<(AccountId, String, Role)>,
@@ -43,7 +44,7 @@ mod factory {
 			let daotype = if ty == 0 { DaoType::Fanclub } else { DaoType::Collab };
 			ink_env::debug_println!("create DAO at {}", Self::env().block_number());
 
-			let new_dao = DaoRef::new(name, daotype, joining_fee, init_members)
+			let new_dao = DaoRef::new(name, metadata_url, daotype, joining_fee, init_members)
 				.endowment(0)
 				.code_hash(self.dao_contract_hash)
 				.salt_bytes(salt.to_le_bytes())

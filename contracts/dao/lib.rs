@@ -79,10 +79,10 @@ pub mod dao {
 	#[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink_storage::traits::StorageLayout))]
 	pub struct Proposal {
 		pub title: String,
+		pub metadata_url: String,
 		pub proposer: AccountId,
 		pub expires: BlockNumber,
 		pub tx: ProposalType,
-		pub pm_content_hash: Option<String>,
 		pub status: ProposalStatus,
 		/// Number of votes required to pass = 0.5 total voters the time this was proposed
 		pub threshold: u32,
@@ -92,11 +92,11 @@ pub mod dao {
 	impl Proposal {
 		pub fn new(
 			title: String,
+			metadata_url: String,
 			proposer: AccountId,
 			current_block: BlockNumber,
 			tx: ProposalType,
 			members_count: u32,
-			pm_content_hash: Option<String>,
 		) -> Result<Self, Error> {
 			let threshold =
 				members_count.checked_div(PROPOSAL_THRESHOLD_DIV).ok_or(Error::ThresholdError)?;
@@ -104,13 +104,13 @@ pub mod dao {
 				current_block.checked_add(EXPIRATION_BLOCK_FROM_NOW).ok_or(Error::Overflow)?;
 			Ok(Self {
 				title,
+				metadata_url,
 				proposer,
 				expires,
 				tx,
 				status: ProposalStatus::Voting,
 				threshold,
 				votes: Votes { yes: 1, no: 0 },
-				pm_content_hash,
 			})
 		}
 
@@ -196,6 +196,8 @@ pub mod dao {
 	pub struct Dao {
 		/// name of dao
 		name: String,
+		/// metadata: ipfs link
+		metadata_url: String,
 		/// Governance type
 		ty: DaoType,
 		/// min fee to join
@@ -230,11 +232,14 @@ pub mod dao {
 		#[ink(constructor)]
 		pub fn new(
 			name: String,
+			metadata_url: String,
 			ty: DaoType,
 			joining_fee: Balance,
 			init_members: Vec<(AccountId, String, Role)>,
 		) -> Self {
-			initialize_contract(|c| Self::new_init(c, name, ty, joining_fee, init_members))
+			initialize_contract(|c| {
+				Self::new_init(c, name, ty, joining_fee, init_members, metadata_url)
+			})
 		}
 
 		fn new_init(
@@ -243,10 +248,12 @@ pub mod dao {
 			ty: DaoType,
 			joining_fee: Balance,
 			init_members: Vec<(AccountId, String, Role)>,
+			metadata_url: String,
 		) {
 			self.name = name;
 			self.ty = ty;
 			self.fee = joining_fee;
+			self.metadata_url = metadata_url;
 			for each in &init_members {
 				self.members.insert(each.0, &(each.1.clone(), each.2));
 				self.member_count += 1;
@@ -313,18 +320,18 @@ pub mod dao {
 			&mut self,
 			proposal_type: ProposalType,
 			title: String,
-			pm_content_hash: Option<String>,
+			metadata_url: String,
 		) -> Result<u32, Error> {
 			self.ensure_caller_is_member();
 			let pid = self.next_proposal_id;
 			let proposer = self.env().caller();
 			let proposal = Proposal::new(
 				title,
+				metadata_url,
 				proposer,
 				self.env().block_number(),
 				proposal_type,
 				self.member_count,
-				pm_content_hash,
 			)?;
 
 			self.proposals.insert(pid, &proposal);
