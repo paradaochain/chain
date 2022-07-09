@@ -27,6 +27,7 @@ pub mod dao {
 	#[derive(Debug, PartialEq, Eq, scale::Encode, scale::Decode)]
 	#[cfg_attr(feature = "std", derive(::scale_info::TypeInfo))]
 	pub enum Error {
+		AlreadyAMember,
 		NotEnoughMembers,
 		ThresholdError,
 		Overflow,
@@ -81,6 +82,7 @@ pub mod dao {
 		pub proposer: AccountId,
 		pub expires: BlockNumber,
 		pub tx: ProposalType,
+		pub pm_content_hash: Option<String>,
 		pub status: ProposalStatus,
 		/// Number of votes required to pass = 0.5 total voters the time this was proposed
 		pub threshold: u32,
@@ -94,6 +96,7 @@ pub mod dao {
 			current_block: BlockNumber,
 			tx: ProposalType,
 			members_count: u32,
+			pm_content_hash: Option<String>,
 		) -> Result<Self, Error> {
 			let threshold =
 				members_count.checked_div(PROPOSAL_THRESHOLD_DIV).ok_or(Error::ThresholdError)?;
@@ -107,6 +110,7 @@ pub mod dao {
 				status: ProposalStatus::Voting,
 				threshold,
 				votes: Votes { yes: 1, no: 0 },
+				pm_content_hash,
 			})
 		}
 
@@ -153,6 +157,8 @@ pub mod dao {
 	pub enum ProposalType {
 		/// Send funds: Balance to an account: AccountId from the treasury
 		Treasury(AccountId, Balance),
+		/// Membership change vec of ID to their new did and role
+		Membership(Vec<AccountId>, Vec<(String, Role)>),
 		/// Have the DAO proxy this action, e.g. calling another contract
 		Proxy(Transaction),
 	}
@@ -170,7 +176,9 @@ pub mod dao {
 	/// Star: Transfer treasury, start poll + proposal
 	/// Collab: Start poll + proposal, vote
 	/// Member: Vote on poll and proposal
-	#[derive(scale::Encode, scale::Decode, Clone, Copy, SpreadLayout, PackedLayout, Debug)]
+	#[derive(
+		scale::Encode, scale::Decode, Clone, Copy, SpreadLayout, PackedLayout, Debug, PartialEq,
+	)]
 	#[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink_storage::traits::StorageLayout))]
 	pub enum Role {
 		/// This is usually the content creator(s) that this DAO supports.
@@ -193,7 +201,7 @@ pub mod dao {
 		/// min fee to join
 		fee: Balance,
 		/// Members list
-		members: Mapping<AccountId, Role>,
+		members: Mapping<AccountId, (String, Role)>,
 		/// Members count
 		member_count: u32,
 		/// Current proposals
@@ -202,6 +210,12 @@ pub mod dao {
 		next_proposal_id: ProposalId,
 		/// Proposal Id and its Voting status
 		votes: Mapping<(ProposalId, AccountId), bool>,
+	}
+
+	#[ink(event)]
+	pub struct Joined {
+		#[ink(topic)]
+		account: AccountId,
 	}
 
 	#[derive(scale::Encode, scale::Decode, Debug)]
@@ -214,19 +228,30 @@ pub mod dao {
 
 	impl Dao {
 		#[ink(constructor)]
-		pub fn new(name: String, ty: DaoType, fee: Balance, stars: Option<Vec<AccountId>>) -> Self {
-			initialize_contract(|c: &mut Self| {
-				c.name = name;
-				c.ty = ty;
-				c.fee = fee;
-				if let Some(s) = stars {
-					if ty == DaoType::Fanclub {
-						for each in s {
-							c.members.insert(each, &Role::Star);
-						}
-					}
-				}
-			})
+		pub fn new(
+			name: String,
+			ty: DaoType,
+			joining_fee: Balance,
+			init_members: Vec<(AccountId, String, Role)>,
+		) -> Self {
+			initialize_contract(|c| Self::new_init(c, name, ty, joining_fee, init_members))
+		}
+
+		fn new_init(
+			&mut self,
+			name: String,
+			ty: DaoType,
+			joining_fee: Balance,
+			init_members: Vec<(AccountId, String, Role)>,
+		) {
+			self.name = name;
+			self.ty = ty;
+			self.fee = joining_fee;
+			for each in &init_members {
+				self.members.insert(each.0, &(each.1.clone(), each.2));
+				self.member_count += 1;
+				self.env().emit_event(Joined { account: each.0 });
+			}
 		}
 
 		/// Returns some useful info for the DAO
@@ -238,7 +263,11 @@ pub mod dao {
 		/// Return stars
 		#[ink(message)]
 		pub fn role_of(&self, member: AccountId) -> Option<Role> {
-			self.members.get(member)
+			if let Some(m) = self.members.get(member) {
+				Some(m.1)
+			} else {
+				None
+			}
 		}
 
 		/// Return total number of members
@@ -255,20 +284,25 @@ pub mod dao {
 
 		/// Returns proposal info
 		#[ink(message)]
-		pub fn proposal_info(&self, proposal_id: ProposalId) -> Proposal {
-			let p = self.proposals.get(proposal_id);
-			assert!(p.is_some(), "No such proposal");
-			p.unwrap()
+		pub fn proposal_info(&self, proposal_id: ProposalId) -> Option<Proposal> {
+			self.proposals.get(proposal_id)
 		}
 
-		/// Returns use vote status for the proposal
+		/// Returns user vote status for the proposal
+		#[ink(message)]
+		pub fn vote_of(&self, proposal_id: ProposalId, account: AccountId) -> Option<bool> {
+			self.votes.get((proposal_id, account))
+		}
 
 		/// Joing a DAO as a member
 		#[ink(message, payable)]
-		pub fn join(&mut self) -> Result<(), Error> {
+		pub fn join(&mut self, did: String) -> Result<(), Error> {
 			let caller = self.env().caller();
 			assert!(self.env().transferred_value() >= self.fee);
-			self.members.insert(caller, &Role::Member);
+			if self.members.contains(caller) {
+				return Err(Error::AlreadyAMember);
+			}
+			self.members.insert(caller, &(did, Role::Member));
 			let count = self.member_count;
 			self.member_count = count.checked_add(1).ok_or(Error::Overflow)?;
 			Ok(())
@@ -279,6 +313,7 @@ pub mod dao {
 			&mut self,
 			proposal_type: ProposalType,
 			title: String,
+			pm_content_hash: Option<String>,
 		) -> Result<u32, Error> {
 			self.ensure_caller_is_member();
 			let pid = self.next_proposal_id;
@@ -289,6 +324,7 @@ pub mod dao {
 				self.env().block_number(),
 				proposal_type,
 				self.member_count,
+				pm_content_hash,
 			)?;
 
 			self.proposals.insert(pid, &proposal);
@@ -323,15 +359,27 @@ pub mod dao {
 
 		#[ink(message)]
 		pub fn execute(&mut self, proposal_id: ProposalId) -> Result<(), Error> {
-			if let Some(p) = self.proposals.get(&proposal_id) {
+			if let Some(mut p) = self.proposals.get(&proposal_id) {
 				if p.status != ProposalStatus::Passed {
 					return Err(Error::NotExecutable);
 				}
-				if let ProposalType::Treasury(to, balance) = p.tx {
-					self.env().transfer(to, balance).map_err(|_| Error::NotEnoughFunds)?;
-					Ok(())
-				} else {
-					return Err(Error::NotSupportedTx);
+				match p.tx {
+					ProposalType::Treasury(to, balance) => {
+						self.env().transfer(to, balance).map_err(|_| Error::NotEnoughFunds)?;
+						p.status = ProposalStatus::Executed;
+						Ok(())
+					},
+					ProposalType::Membership(members, roles) => {
+						for (i, m) in members.iter().enumerate() {
+							if !self.members.contains(m) {
+								self.member_count += 1;
+							}
+							self.members.insert(m, &(roles[i].0.clone(), roles[i].1))
+						}
+						p.status = ProposalStatus::Executed;
+						Ok(())
+					},
+					_ => Err(Error::NotSupportedTx),
 				}
 			} else {
 				Err(Error::NotFound)
@@ -370,17 +418,31 @@ pub mod dao {
 			ink_env::test::default_accounts::<Environment>()
 		}
 
-		fn create_fanclub_dao(stars: Vec<AccountId>) -> Dao {
-			Dao::new(String::from("newDAO"), DaoType::Fanclub, 2, Some(stars))
+		fn create_collab_dao(
+			joining_fee: Balance,
+			init_members: Vec<(AccountId, String, Role)>,
+		) -> Dao {
+			Dao::new(String::from("newDAO"), DaoType::Collab, joining_fee, init_members)
 		}
 
 		/// We test a simple use case of our contract.
 		#[ink::test]
 		fn create_dao_works() {
 			let test_accounts = default_accounts();
-			let dao = create_fanclub_dao(vec![test_accounts.alice, test_accounts.bob]);
+			let dao = create_collab_dao(
+				2,
+				vec![
+					(test_accounts.alice, String::from("did:alice"), Role::Star),
+					(test_accounts.bob, String::from("did:bob"), Role::Collab),
+					(test_accounts.charlie, String::from("did:charlie"), Role::Member),
+				],
+			);
 			assert_eq!(dao.info().name, "newDAO");
-			assert_eq!(dao.info().ty, DaoType::Fanclub);
+			assert_eq!(dao.info().ty, DaoType::Collab);
+			assert_eq!(dao.total_members(), 3);
+			assert_eq!(dao.role_of(test_accounts.alice).unwrap(), Role::Star);
+			assert_eq!(dao.role_of(test_accounts.bob).unwrap(), Role::Collab);
+			assert_eq!(dao.role_of(test_accounts.charlie).unwrap(), Role::Member);
 		}
 
 		//		#[ink::test]
