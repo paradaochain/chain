@@ -159,11 +159,14 @@ pub mod dao {
 		Treasury(AccountId, Balance),
 		/// Membership change vec of ID to their new did and role
 		Membership(Vec<AccountId>, Vec<(String, Role)>),
+		/// DAO metadata_url
+		UpdateMetadata(String),
+		/// DAO joining fee update
+		UpdateFee(Balance),
 		/// Have the DAO proxy this action, e.g. calling another contract
 		Proxy(Transaction),
 	}
 
-	// TODO impl
 	impl SpreadAllocate for DaoType {
 		#[inline]
 		fn allocate_spread(ptr: &mut KeyPtr) -> Self {
@@ -220,7 +223,7 @@ pub mod dao {
 		account: AccountId,
 	}
 
-	#[derive(scale::Encode, scale::Decode, Debug)]
+	#[derive(scale::Encode, scale::Decode, Debug, Clone, SpreadLayout, PackedLayout)]
 	#[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink_storage::traits::StorageLayout))]
 	pub struct Info {
 		name: String,
@@ -385,6 +388,14 @@ pub mod dao {
 						p.status = ProposalStatus::Executed;
 						Ok(())
 					},
+					ProposalType::UpdateMetadata(url) => {
+						self.metadata_url = url;
+						Ok(())
+					},
+					ProposalType::UpdateFee(fee) => {
+						self.fee = fee;
+						Ok(())
+					},
 					_ => Err(Error::NotSupportedTx),
 				}
 			} else {
@@ -456,11 +467,5 @@ pub mod dao {
 			assert_eq!(dao.role_of(test_accounts.bob).unwrap(), Role::Collab);
 			assert_eq!(dao.role_of(test_accounts.charlie).unwrap(), Role::Member);
 		}
-
-		//		#[ink::test]
-		//		fn proposal_works() {
-		//			let test_accounts = default_accounts();
-		//			let dao =  create_fanclub_dao(vec![test_accounts.alice, test_accounts.bob])
-		//		}
 	}
 }
