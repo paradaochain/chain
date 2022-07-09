@@ -1,0 +1,13 @@
+{
+  "name": "paradao-scripts",
+  "version": "1.0.0",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "deploy": "./deploy.js"
+  },
+  "dependencies": {
+    "@polkadot/api": "^8.8.2",
+    "@polkadot/api-contract": "^8.12.1"
+  }
+}
