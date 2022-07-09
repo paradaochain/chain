@@ -4,7 +4,8 @@
   "license": "MIT",
   "private": true,
   "scripts": {
-    "deploy": "./deploy.js"
+    "deploy": "./deploy.js",
+    "createdao": "./createDao.js"
   },
   "dependencies": {
     "@polkadot/api": "^8.8.2",

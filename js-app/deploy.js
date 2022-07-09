@@ -43,8 +43,8 @@ async function main () {
       		if (section == "contracts" && method == "CodeStored"){
       			dao_code_stored = data[0].toString();
       		}
-
           });
+
         } else if (status.isFinalized) {
             console.log('Finalized block hash for DAO code', status.asFinalized.toHex());
 
