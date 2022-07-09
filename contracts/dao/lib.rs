@@ -226,6 +226,7 @@ pub mod dao {
 		name: String,
 		ty: DaoType,
 		fee: Balance,
+		metadata_url: String,
 	}
 
 	impl Dao {
@@ -257,7 +258,12 @@ pub mod dao {
 		/// Returns some useful info for the DAO
 		#[ink(message)]
 		pub fn info(&self) -> Info {
-			Info { name: self.name.clone(), ty: self.ty, fee: self.fee }
+			Info {
+				name: self.name.clone(),
+				ty: self.ty,
+				fee: self.fee,
+				metadata_url: self.metadata_url.clone(),
+			}
 		}
 
 		/// Return stars
