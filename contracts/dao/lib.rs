@@ -7,7 +7,7 @@ pub use self::dao::{Dao, DaoRef};
 #[ink::contract]
 pub mod dao {
 
-	use ink_prelude::{string::String, vec::Vec};
+use ink_prelude::{string::String, vec::Vec};
 	use ink_storage::{
 		traits::{PackedLayout, SpreadAllocate, SpreadLayout},
 		Mapping,
@@ -162,6 +162,12 @@ pub mod dao {
 	pub struct Dao {
 		/// name of dao
 		name: String,
+		/// Purpose of dao.
+		purpose: String,
+		/// logo of dao
+		logo_url: Option<String>,
+		/// social networks links
+		social_links: Mapping<String, String>,
 		/// Governance type
 		ty: DaoType,
 		/// min fee to join
@@ -180,21 +186,52 @@ pub mod dao {
 
 	#[derive(scale::Encode, scale::Decode, Debug)]
 	#[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink_storage::traits::StorageLayout))]
-	pub struct Info {
+	pub struct DaoInfo {
 		name: String,
+		purpose: String,
+		logo_url: Option<String>,
+		social_links: Vec<(String, String)>,
 		ty: DaoType,
 		fee: Balance,
 	}
 
+	#[derive(scale::Encode, scale::Decode, Debug)]
+	#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+	pub struct CreateDaoMessage {
+		name: String,
+		purpose: String,
+		logo_url: Option<String>,
+		social_links: Option<Vec<(String, String)>>,
+		ty: u8,
+		fee: Balance,
+	}
+
+	#[derive(scale::Encode, scale::Decode, Debug)]
+	#[cfg_attr(feature = "std", derive(scale_info::TypeInfo))]
+	pub struct UpdateDaoInfoMessage {
+		name: Option<String>,
+		purpose: Option<String>,
+		logo_url: Option<String>,
+		fee: Option<Balance>,
+	}
+
 	impl Dao {
 		#[ink(constructor)]
-		pub fn new(name: String, ty: DaoType, fee: Balance, stars: Option<Vec<AccountId>>) -> Self {
+		pub fn new(info: CreateDaoMessage, stars: Option<Vec<AccountId>>) -> Self {
 			initialize_contract(|c: &mut Self| {
-				c.name = name;
-				c.ty = ty;
-				c.fee = fee;
+				let daotype = if info.ty == 0 { DaoType::Fanclub } else { DaoType::Collab };
+				c.name = info.name;
+				c.purpose = info.purpose;
+				c.ty = daotype;
+				c.fee = info.fee;
+				c.logo_url = info.logo_url;
+				if info.social_links.is_some() {
+					for (name, link) in info.social_links.unwrap() {
+						c.social_links.insert(name, &link);
+					}
+				}
 				if let Some(s) = stars {
-					if ty == DaoType::Fanclub {
+					if daotype == DaoType::Fanclub {
 						for each in s {
 							c.members.insert(each, &Role::Star);
 						}
@@ -202,11 +239,14 @@ pub mod dao {
 				}
 			})
 		}
+		
 
 		/// Returns some useful info for the DAO
 		#[ink(message)]
-		pub fn info(&self) -> Info {
-			Info { name: self.name.clone(), ty: self.ty, fee: self.fee }
+		pub fn info(&self) -> DaoInfo {
+			let social_links = Vec::new();
+		
+			DaoInfo { name: self.name.clone(), purpose: self.purpose.clone(), logo_url: self.logo_url.clone(), social_links, ty: self.ty, fee: self.fee }
 		}
 
 		/// Return stars
@@ -258,6 +298,31 @@ pub mod dao {
 			pid
 		}
 
+		#[ink(message, payable)]
+		pub fn update_dao_info(&mut self, info: UpdateDaoInfoMessage) -> () {
+			self.ensure_from_dao();
+			self.name = info.name.unwrap_or(self.name.clone());
+			self.purpose = info.purpose.unwrap_or(self.purpose.clone());
+			self.fee = info.fee.unwrap_or(self.fee.clone());
+			self.logo_url = info.logo_url;
+		}
+
+		#[ink(message, payable)]
+		pub fn add_social_links(&mut self, links: Vec<(String, String)>) -> () {
+			self.ensure_from_dao();
+			for (name, link) in links {
+				self.social_links.insert(name, &link);
+			}
+		}
+
+		#[ink(message, payable)]
+		pub fn remove_social_links(&mut self, links: Vec<String>) -> () {
+			self.ensure_from_dao();
+			for name in links {
+				self.social_links.remove(name);
+			}
+		}
+		
 		// Helpers
 		/// Panic if the sender is not self
 		/// Usually used to promote members

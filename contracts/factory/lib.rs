@@ -4,7 +4,7 @@ use ink_lang as ink;
 
 #[ink::contract]
 mod factory {
-	use dao::{dao::DaoType, DaoRef};
+	use dao::{dao::{DaoType, CreateDaoMessage}, DaoRef};
 	use ink_storage::{
 		traits::{PackedLayout, SpreadAllocate, SpreadLayout},
 		Mapping,
@@ -34,15 +34,12 @@ mod factory {
 		#[ink(message)]
 		pub fn create_dao(
 			&mut self,
-			name: String,
-			ty: u32,
-			fee: Balance,
+			info: CreateDaoMessage,
 			stars: Option<Vec<AccountId>>
 		) {
-			let daotype = if ty == 0 { DaoType::Fanclub } else { DaoType::Collab };
 			ink_env::debug_println!("create DAO at {}", Self::env().block_number());
 
-			let new_dao = DaoRef::new(name, daotype, fee, stars)
+			let new_dao = DaoRef::new(info, stars)
 				.endowment(0)
 				.code_hash(self.dao_contract_hash)
 				.salt_bytes(self.next_index.to_le_bytes())
