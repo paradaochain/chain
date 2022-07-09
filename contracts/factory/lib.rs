@@ -23,9 +23,9 @@ mod factory {
 
 	impl Factory {
 		#[ink(constructor)]
-		pub fn new(next_index: u32, dao_contract_hash: Hash) -> Self {
+		pub fn new(dao_contract_hash: Hash) -> Self {
 			initialize_contract(|contract: &mut Self| {
-				contract.next_index = next_index;
+				contract.next_index = 0;
 				contract.dao_contract_hash = dao_contract_hash;
 			})
 		}
@@ -57,6 +57,11 @@ mod factory {
 
 			self.daos.push(addr);
 			self.next_index += 1;
+		}
+
+		#[ink(message)]
+		pub fn dev_update_code_hash(&mut self, new_code_hash: Hash) {
+			self.dao_contract_hash = new_code_hash;
 		}
 
 		/// Simply returns the number of daos created
