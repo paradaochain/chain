@@ -11,7 +11,8 @@ Collab DAO type
 -   \*MemberA joins DAO by paying membership fees
 -   \*MemberB creates a prediction market for decision making, 3 OAT - Strategy1, Strategy2, None, see https://paradaochain.github.io/docs/prediction_market.html#voting
     (MemberB is the oracle for the PM)
--   _script: MemberB create 2 proposals with PM hash / link?_
+-   \*MemberB create 1 proposals with PM market id?\_
+-   _script: MemberB create second proposals with PM hash / link?_
 -   _script: 1 person vote no on proposal-strategy1_
 -   _script: 1 person vote yes on proposal-strategy2_
 -   _script: 1 person bought `Strategy1`, 1 bought `None`_
