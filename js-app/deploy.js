@@ -27,7 +27,7 @@ async function main () {
   });
 
   const keyring = new Keyring({ type: 'sr25519' });
-  const alice = keyring.addFromUri('//Alice');
+  const alice = keyring.addFromUri('//Bob');
   let dao_code_stored = null;
 
     await api.tx.contracts.uploadCode("0x"+dao_wasm, null)

@@ -6,7 +6,7 @@ const path = require("path")
 const fs = require("fs")
 const { ContractPromise } = require('@polkadot/api-contract');
 
-// yarn createdao 5CBhT1XmQVutFogBrV81VTLomfWWXAD1qjV7WVZgLNTieY85 "working club" asdfajfsdlkajf 0 1000000
+// yarn createdao 5DVRUa66tGxShQKu8Z7oLuU4r38N4aNTPh2UGrJg7XFCrsJg "working club" asdfajfsdlkajf 0 1000000
 
 
 async function main () {

@@ -21,6 +21,18 @@ mod factory {
 		daos: Vec<AccountId>,
 	}
 
+	#[ink(event)]
+	pub struct DaoCreated {
+		#[ink(topic)]
+		addr: AccountId,
+	}
+
+	#[ink(event)]
+	pub struct CodeHashUpdated {
+		#[ink(topic)]
+		new_code_hash: Hash,
+	}
+
 	impl Factory {
 		#[ink(constructor)]
 		pub fn new(dao_contract_hash: Hash) -> Self {

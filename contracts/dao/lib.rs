@@ -218,9 +218,48 @@ pub mod dao {
 	}
 
 	#[ink(event)]
+	pub struct DaoCreated {
+		name: String,
+		metadata_url: String,
+		joining_fee: Balance,
+		ty: DaoType,
+	}
+
+	#[ink(event)]
 	pub struct Joined {
 		#[ink(topic)]
 		account: AccountId,
+		role: Role,
+		total_count: u32,
+	}
+
+	#[ink(event)]
+	pub struct Proposed {
+		#[ink(topic)]
+		title: String,
+		#[ink(topic)]
+		metadata_url: String,
+		threshold: u32,
+		expires: BlockNumber,
+	}
+
+	#[ink(event)]
+	pub struct Voted {
+		#[ink(topic)]
+		proposal_id: ProposalId,
+		voter: AccountId,
+		#[ink(topic)]
+		vote: bool,
+		proposal_status: ProposalStatus,
+	}
+
+	#[ink(event)]
+	pub struct Executed {
+		#[ink(topic)]
+		proposal_id: ProposalId,
+		block: BlockNumber,
+		#[ink(topic)]
+		proposal_type: ProposalType,
 	}
 
 	#[derive(scale::Encode, scale::Decode, Debug, Clone, SpreadLayout, PackedLayout)]
@@ -242,19 +281,25 @@ pub mod dao {
 			init_members: Option<Vec<(AccountId, String, Role)>>,
 		) -> Self {
 			initialize_contract(|c: &mut Self| {
-				c.name = name;
+				c.name = name.clone();
 				c.ty = ty;
 				c.fee = joining_fee;
-				c.metadata_url = metadata_url;
+				c.metadata_url = metadata_url.clone();
 				c.members = <Mapping<AccountId, (String, Role)>>::default();
 
 				if let Some(i) = init_members {
 					for each in i {
 						c.members.insert(each.0, &(each.1.clone(), each.2));
 						c.member_count += 1;
-						c.env().emit_event(Joined { account: each.0 });
+						c.env().emit_event(Joined {
+							account: each.0,
+							role: each.2,
+							total_count: c.member_count,
+						});
 					}
 				}
+
+				c.env().emit_event(DaoCreated { name, metadata_url, joining_fee, ty })
 			})
 		}
 
@@ -314,6 +359,11 @@ pub mod dao {
 			self.members.insert(caller, &(did, Role::Member));
 			let count = self.member_count;
 			self.member_count = count.checked_add(1).ok_or(Error::Overflow)?;
+			self.env().emit_event(Joined {
+				account: caller,
+				role: Role::Member,
+				total_count: self.member_count,
+			});
 			Ok(())
 		}
 
@@ -328,8 +378,8 @@ pub mod dao {
 			let pid = self.next_proposal_id;
 			let proposer = self.env().caller();
 			let proposal = Proposal::new(
-				title,
-				metadata_url,
+				title.clone(),
+				metadata_url.clone(),
 				proposer,
 				self.env().block_number(),
 				proposal_type,
@@ -339,6 +389,13 @@ pub mod dao {
 			self.proposals.insert(pid, &proposal);
 			self.votes.insert((pid, proposer), &true);
 			self.next_proposal_id = pid.checked_add(1).expect("Overflow");
+
+			self.env().emit_event(Proposed {
+				title,
+				metadata_url,
+				threshold: proposal.threshold,
+				expires: proposal.expires,
+			});
 			Ok(pid)
 		}
 
@@ -360,6 +417,14 @@ pub mod dao {
 					p.votes.no = no.checked_add(1).ok_or(Error::Overflow)?;
 				}
 				p.update_status(false);
+
+				self.env().emit_event(Voted {
+					proposal_id,
+					voter: self.env().caller(),
+					vote,
+					proposal_status: p.status,
+				});
+
 				Ok(())
 			} else {
 				Err(Error::NotFound)
@@ -372,11 +437,10 @@ pub mod dao {
 				if p.status != ProposalStatus::Passed {
 					return Err(Error::NotExecutable);
 				}
-				match p.tx {
+				match p.tx.clone() {
 					ProposalType::Treasury(to, balance) => {
 						self.env().transfer(to, balance).map_err(|_| Error::NotEnoughFunds)?;
 						p.status = ProposalStatus::Executed;
-						Ok(())
 					},
 					ProposalType::Membership(members, roles) => {
 						for (i, m) in members.iter().enumerate() {
@@ -386,18 +450,23 @@ pub mod dao {
 							self.members.insert(m, &(roles[i].0.clone(), roles[i].1))
 						}
 						p.status = ProposalStatus::Executed;
-						Ok(())
 					},
 					ProposalType::UpdateMetadata(url) => {
 						self.metadata_url = url;
-						Ok(())
 					},
 					ProposalType::UpdateFee(fee) => {
 						self.fee = fee;
-						Ok(())
 					},
-					_ => Err(Error::NotSupportedTx),
-				}
+					_ => {
+						panic!("not supported")
+					},
+				};
+				self.env().emit_event(Executed {
+					proposal_id,
+					block: self.env().block_number(),
+					proposal_type: p.tx,
+				});
+				Ok(())
 			} else {
 				Err(Error::NotFound)
 			}
