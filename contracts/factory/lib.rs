@@ -22,12 +22,6 @@ mod factory {
 	}
 
 	#[ink(event)]
-	pub struct DaoCreated {
-		#[ink(topic)]
-		addr: AccountId,
-	}
-
-	#[ink(event)]
 	pub struct CodeHashUpdated {
 		#[ink(topic)]
 		new_code_hash: Hash,

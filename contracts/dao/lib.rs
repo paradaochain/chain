@@ -417,7 +417,7 @@ pub mod dao {
 					p.votes.no = no.checked_add(1).ok_or(Error::Overflow)?;
 				}
 				p.update_status(false);
-
+				self.proposals.insert(proposal_id, &p);
 				self.env().emit_event(Voted {
 					proposal_id,
 					voter: self.env().caller(),
@@ -437,6 +437,7 @@ pub mod dao {
 				if p.status != ProposalStatus::Passed {
 					return Err(Error::NotExecutable);
 				}
+				self.proposals.remove(&proposal_id);
 				match p.tx.clone() {
 					ProposalType::Treasury(to, balance) => {
 						self.env().transfer(to, balance).map_err(|_| Error::NotEnoughFunds)?;
@@ -461,6 +462,7 @@ pub mod dao {
 						panic!("not supported")
 					},
 				};
+				self.proposals.insert(proposal_id, &p);
 				self.env().emit_event(Executed {
 					proposal_id,
 					block: self.env().block_number(),

@@ -7,7 +7,8 @@
     "deploy": "./deploy.js",
     "createdao": "./createDao.js",
     "joindao": "./joinDao.js",
-    "propose": "./propose.js"
+    "propose": "./propose.js",
+    "vote": "./vote.js"
   },
   "dependencies": {
     "@polkadot/api": "^8.8.2",
