@@ -78,6 +78,9 @@ async function main () {
 
 			    address = contract.address.toString();
 				  console.log("factory address: ", address)
+				  fs.writeFileSync('.tmp-factoryContract', address, function (err) {
+					  if (err) return console.log(err);
+					});
 				  process.exit(0)
 			  }
 			});

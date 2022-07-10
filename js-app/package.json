@@ -5,7 +5,9 @@
   "private": true,
   "scripts": {
     "deploy": "./deploy.js",
-    "createdao": "./createDao.js"
+    "createdao": "./createDao.js",
+    "joindao": "./joinDao.js",
+    "propose": "./propose.js"
   },
   "dependencies": {
     "@polkadot/api": "^8.8.2",

@@ -6,7 +6,7 @@ const path = require("path")
 const fs = require("fs")
 const { ContractPromise } = require('@polkadot/api-contract');
 
-// yarn createdao 5E7rJpTTa5Hg5QwETu6cvnvFimbxTVfiGMzN4Sm41wBamrwV "working club" asdfajfsdlkajf 0 1000000
+// yarn proposedao 5GtFrvFu9JRfipZZvBvw5XoVT8EFkbknccYjHvgJTRjNLSxQ Charlie 1000000
 
 
 async function main () {
@@ -14,19 +14,13 @@ async function main () {
   const ip = "127.0.0.1"
   const port = "9944"
 
-  const factoryContractAddress = process.argv[2]
-  const name = process.argv[3]
-  const metadata = process.argv[4]
-  const ty = parseInt(process.argv[5])
+  const daoContractAddress = process.argv[2]
+  const who = process.argv[3]
+  const value = parseInt(process.argv[4])
 
-  console.log("factory address at : ", factoryContractAddress);
-  console.log("name : ", name);
-  console.log("metadata : ", metadata);
-  console.log("ty: ", ty);
-
-  // const factoryContractAddress = fs.readFileSync(path.resolve( __dirname, ".tmp-factoryContract"))
-  const factory_metadata= fs.readFileSync(path.resolve(__dirname,
-		"../target/ink/factory/metadata.json")).toString();
+  // const daoContractAddress = fs.readFileSync(path.resolve( __dirname, ".tmp-daoContract"))
+  const dao_metadata= fs.readFileSync(path.resolve(__dirname,
+		"../target/ink/dao/metadata.json")).toString();
 
 
   const wsProvider = new WsProvider(`ws://${ip}:${port}`);
@@ -36,10 +30,9 @@ async function main () {
   });
 
   const keyring = new Keyring({ type: 'sr25519' });
-  const alice = keyring.addFromUri('//Alice');
-	let daoAddress = null;
+  const alice = keyring.addFromUri('//' + who);
 
-  const contract = new ContractPromise(api, factory_metadata, factoryContractAddress);
+  const contract = new ContractPromise(api, dao_metadata, daoContractAddress);
   // maximum gas to be consumed for the call. if limit is too small the call will fail.
   const gasLimit = 1000000n * 1000000n;
   // a limit to how much Balance to be used to pay for the storage created by the contract call
@@ -47,23 +40,16 @@ async function main () {
   const storageDepositLimit = null
 
   // (We perform the send from an account, here using Alice's address)
-	let timestamp = Date.now();
+
 	 await contract.tx
-	   .createDao({ storageDepositLimit, gasLimit }, name, metadata, ty, 100000, null,
-		Math.floor(timestamp/1000))
+		.join({ storageDepositLimit, gasLimit, value  }, "did:key:"+alice.address)
 	   .signAndSend(alice, result => {
 	     if (result.status.isInBlock) {
            result.events.forEach( ({ event: { data, method, section }, phase }) => {
              console.log('\t', phase.toString(), `: ${section}.${method}`, data.toString());
-			 if (section == "contracts" && method == "Instantiated"){
-      			daoAddress = data[1].toString();
-			}
            });
 	     } else if (result.status.isFinalized) {
-			 console.log('DAO address: ', daoAddress);
-			 fs.writeFileSync('.tmp-daoContract', daoAddress, function (err) {
-			     if (err) return console.log(err);
-			   });
+			 console.log('joined: ' );
 			 process.exit(0)
 	     }
 	   });
