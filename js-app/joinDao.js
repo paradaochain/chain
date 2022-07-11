@@ -6,7 +6,7 @@ const path = require("path");
 const fs = require("fs");
 const { ContractPromise } = require("@polkadot/api-contract");
 
-// yarn proposedao 5GtFrvFu9JRfipZZvBvw5XoVT8EFkbknccYjHvgJTRjNLSxQ Charlie 1000000
+// yarn joindao 5GtFrvFu9JRfipZZvBvw5XoVT8EFkbknccYjHvgJTRjNLSxQ Charlie 1000000
 
 async function main() {
 	const ip = "127.0.0.1";
