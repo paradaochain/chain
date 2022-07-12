@@ -7,10 +7,11 @@ services:
       - '6644:9944'
       - '6633:9933'
     volumes:
-      - ./:/data
+      - ./chainspecs:/chainspecs
+      - alice:/data
     command:
-      - --chain=/data/chainspecs/rococo-local-raw.json
-      - --base-path=/data/.tmp_alice_data
+      - --chain=/chainspecs/rococo-local-raw.json
+      - --base-path=/data
       - --port=30333
       - --ws-port=9944
       - --rpc-port=9933
@@ -34,9 +35,10 @@ services:
       - '6677:9944'
       - '6655:9933'
     volumes:
-      - ./:/data
+      - ./chainspecs:/chainspecs
+      - bob:/data
     command:
-      - --chain=/data/chainspecs/rococo-local-raw.json
+      - --chain=/chainspecs/rococo-local-raw.json
       - --base-path=/data/.tmp_bob_data
       - --port=30333
       - --ws-port=9944
@@ -92,7 +94,7 @@ services:
       - '9944:9944'
       - '9933:9933'
     volumes:
-      - ./:/data
+      - /root/chain/:/data
     depends_on:
       - validator-alice
       - validator-bob
@@ -111,10 +113,10 @@ services:
       - '8844:9944'
       - '8833:9933'
     volumes:
-      - ./:/data
+      - zg:/data
     command:
       - --dev
-      - --base-path=/data/.tmp_zg_data
+      - --base-path=/data
       - --port=30333
       - --ws-port=9944
       - --rpc-port=9933
@@ -127,6 +129,9 @@ services:
 volumes:
   paradao-genesis-state:
   paradao-wasm-runtime:
+  alice:
+  bob:
+  zg:
 
 networks:
   paradao_net:
