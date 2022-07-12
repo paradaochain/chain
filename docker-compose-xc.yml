@@ -94,7 +94,7 @@ services:
       - '9944:9944'
       - '9933:9933'
     volumes:
-      - /root/chain/:/data
+      - ./:/data
     depends_on:
       - validator-alice
       - validator-bob
@@ -124,6 +124,11 @@ services:
       - --unsafe-ws-external
       - --no-prometheus
       - --no-telemetry
+    networks:
+      paradao_net:
+        ipv4_address: 172.28.1.9
+        aliases:
+          - zg-node
 
 volumes:
   paradao-genesis-state:
