@@ -75,12 +75,14 @@ pub mod dao {
 		pub no: u32,
 	}
 
+	/// Proposal object created by the `propose` method
 	#[derive(scale::Encode, scale::Decode, PackedLayout, SpreadLayout, Debug)]
 	#[cfg_attr(feature = "std", derive(scale_info::TypeInfo, ink_storage::traits::StorageLayout))]
 	pub struct Proposal {
 		pub title: String,
 		pub metadata_url: String,
 		pub proposer: AccountId,
+		// current block + EXPIRATION_BLOCK_FROM_NOW
 		pub expires: BlockNumber,
 		pub tx: ProposalType,
 		pub status: ProposalStatus,
@@ -490,16 +492,10 @@ pub mod dao {
 		}
 	}
 
-	/// Unit tests in Rust are normally defined within such a `#[cfg(test)]`
-	/// module and test functions are marked with a `#[test]` attribute.
-	/// The below code is technically just normal Rust code.
 	#[cfg(test)]
 	mod tests {
-		/// Imports all the definitions from the outer scope so we can use them here.
 		use super::*;
-
 		use ink_env::test;
-		/// Imports `ink_lang` so we can use `#[ink::test]`.
 		use ink_lang as ink;
 
 		fn default_accounts() -> test::DefaultAccounts<Environment> {
@@ -519,7 +515,10 @@ pub mod dao {
 			)
 		}
 
-		/// We test a simple use case of our contract.
+		fn set_caller(caller: AccountId) {
+			ink_env::test::set_caller::<Environment>(caller);
+		}
+
 		#[ink::test]
 		fn create_dao_works() {
 			let test_accounts = default_accounts();
@@ -537,6 +536,152 @@ pub mod dao {
 			assert_eq!(dao.role_of(test_accounts.alice).unwrap(), Role::Star);
 			assert_eq!(dao.role_of(test_accounts.bob).unwrap(), Role::Collab);
 			assert_eq!(dao.role_of(test_accounts.charlie).unwrap(), Role::Member);
+		}
+
+		#[ink::test]
+		fn join_works() {
+			let test_accounts = default_accounts();
+			let mut dao = create_collab_dao(
+				2,
+				Some(vec![(test_accounts.alice, String::from("did:alice"), Role::Star)]),
+			);
+			set_caller(test_accounts.bob);
+			ink_env::test::set_value_transferred::<ink_env::DefaultEnvironment>(2);
+			dao.join("did:key:bobstring12345".to_string()).unwrap();
+			assert_eq!(dao.role_of(test_accounts.bob).unwrap(), Role::Member);
+			assert_eq!(dao.total_members(), 2);
+		}
+
+		#[ink::test]
+		#[should_panic]
+		fn join_fails_without_fund() {
+			let test_accounts = default_accounts();
+			let mut dao = create_collab_dao(
+				2,
+				Some(vec![(test_accounts.alice, String::from("did:alice"), Role::Star)]),
+			);
+			set_caller(test_accounts.bob);
+			dao.join("did:key:bobstring12345".to_string()).unwrap();
+		}
+
+		#[ink::test]
+		fn propose_works() {
+			let test_accounts = default_accounts();
+			let mut dao = create_collab_dao(2, None);
+			let proposer = test_accounts.bob;
+			let propser_did = "did:key:bobstring12345".to_string();
+			let proposal = ProposalType::Treasury(test_accounts.charlie, 1);
+			let title = "test proposal".to_string();
+			let url = "ipfs::contenthash".to_string();
+
+			// first joiner
+			ink_env::test::set_value_transferred::<ink_env::DefaultEnvironment>(2);
+			set_caller(test_accounts.charlie);
+			dao.join("did:key:charliddid".to_string()).unwrap();
+
+			// second joiner
+			ink_env::test::set_value_transferred::<ink_env::DefaultEnvironment>(2);
+			set_caller(test_accounts.eve);
+			dao.join("did:key:evedid".to_string()).unwrap();
+
+			// third joiner
+			ink_env::test::set_value_transferred::<ink_env::DefaultEnvironment>(2);
+			set_caller(test_accounts.django);
+			dao.join("did:key:djangodid".to_string()).unwrap();
+
+			// third joiner and proposer
+			set_caller(proposer);
+			ink_env::test::set_value_transferred::<ink_env::DefaultEnvironment>(2);
+			dao.join(propser_did).unwrap();
+			let proposal_id = dao.propose(proposal, title.clone(), url.clone()).unwrap();
+
+			assert_eq!(proposal_id, 0);
+			let info = dao.proposal_info(proposal_id).unwrap();
+			println!("{:?}", info.expires);
+			assert_eq!(info.proposer, proposer);
+			assert_eq!(info.title, title);
+			assert_eq!(info.metadata_url, url);
+			assert_eq!(info.expires, EXPIRATION_BLOCK_FROM_NOW);
+			assert_eq!(info.threshold, 2);
+		}
+
+		#[ink::test]
+		fn vote_works() {
+			let test_accounts = default_accounts();
+			let mut dao = create_collab_dao(2, None);
+
+			let proposer = test_accounts.bob;
+			let propser_did = "did:key:bobstring12345".to_string();
+			let proposal = ProposalType::Treasury(test_accounts.charlie, 1);
+			let title = "test proposal".to_string();
+			let url = "ipfs::contenthash".to_string();
+
+			// first joiner
+			ink_env::test::set_value_transferred::<ink_env::DefaultEnvironment>(2);
+			set_caller(test_accounts.charlie);
+			dao.join("did:key:charliddid".to_string()).unwrap();
+
+			// second joiner
+			ink_env::test::set_value_transferred::<ink_env::DefaultEnvironment>(2);
+			set_caller(test_accounts.eve);
+			dao.join("did:key:evedid".to_string()).unwrap();
+
+			// third joiner and proposer
+			set_caller(proposer);
+			ink_env::test::set_value_transferred::<ink_env::DefaultEnvironment>(2);
+			dao.join(propser_did).unwrap();
+			let proposal_id = dao.propose(proposal, title.clone(), url.clone()).unwrap();
+
+			set_caller(test_accounts.charlie);
+			dao.vote(proposal_id, true).unwrap();
+
+			assert_eq!(dao.proposal_info(proposal_id).unwrap().status, ProposalStatus::Passed);
+		}
+
+		#[ink::test]
+		fn execute_works() {
+			let test_accounts = default_accounts();
+			let mut dao = create_collab_dao(2, None);
+
+			let proposer = test_accounts.bob;
+			let propser_did = "did:key:bobstring12345".to_string();
+			let proposal = ProposalType::Treasury(test_accounts.charlie, 1);
+			let title = "test proposal".to_string();
+			let url = "ipfs::contenthash".to_string();
+
+			// first joiner
+			ink_env::test::set_value_transferred::<ink_env::DefaultEnvironment>(2);
+			set_caller(test_accounts.charlie);
+			dao.join("did:key:charliddid".to_string()).unwrap();
+
+			// second joiner
+			ink_env::test::set_value_transferred::<ink_env::DefaultEnvironment>(2);
+			set_caller(test_accounts.eve);
+			dao.join("did:key:evedid".to_string()).unwrap();
+
+			// third joiner and proposer
+			set_caller(proposer);
+			ink_env::test::set_value_transferred::<ink_env::DefaultEnvironment>(2);
+			dao.join(propser_did).unwrap();
+			let proposal_id = dao.propose(proposal, title.clone(), url.clone()).unwrap();
+
+			set_caller(test_accounts.charlie);
+			dao.vote(proposal_id, true).unwrap();
+
+			let original_balance =
+				ink_env::test::get_account_balance::<ink_env::DefaultEnvironment>(
+					test_accounts.charlie,
+				)
+				.unwrap();
+
+			dao.execute(proposal_id).unwrap();
+
+			let post_balance = ink_env::test::get_account_balance::<ink_env::DefaultEnvironment>(
+				test_accounts.charlie,
+			)
+			.unwrap();
+
+			assert_eq!(post_balance - original_balance, 1);
 		}
 	}
 }
