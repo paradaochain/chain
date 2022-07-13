@@ -65,11 +65,6 @@ mod factory {
 			self.next_index += 1;
 		}
 
-		#[ink(message)]
-		pub fn dev_update_code_hash(&mut self, new_code_hash: Hash) {
-			self.dao_contract_hash = new_code_hash;
-		}
-
 		/// Simply returns the number of daos created
 		#[ink(message)]
 		pub fn get_next_index(&self) -> u32 {
